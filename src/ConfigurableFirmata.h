@@ -22,29 +22,29 @@
  * Query using the REPORT_VERSION message.
  */
 #define FIRMATA_PROTOCOL_MAJOR_VERSION  2 // for non-compatible changes
-#define FIRMATA_PROTOCOL_MINOR_VERSION  6 // for backwards compatible changes
+#define FIRMATA_PROTOCOL_MINOR_VERSION  7 // for backwards compatible changes
 #define FIRMATA_PROTOCOL_BUGFIX_VERSION 0 // for bugfix releases
 
 /*
  * Version numbers for the Firmata library.
- * ConfigurableFirmata 2.10.1 implements version 2.6.0 of the Firmata protocol.
+ * ConfigurableFirmata 2.11.0 implements version 2.7.0 of the Firmata protocol.
  * The firmware version will not always equal the protocol version going forward.
  * Query using the REPORT_FIRMWARE message.
  */
 #define FIRMATA_FIRMWARE_MAJOR_VERSION  2 // for non-compatible changes
-#define FIRMATA_FIRMWARE_MINOR_VERSION  10 // for backwards compatible changes
-#define FIRMATA_FIRMWARE_BUGFIX_VERSION 1 // for bugfix releases
+#define FIRMATA_FIRMWARE_MINOR_VERSION  11 // for backwards compatible changes
+#define FIRMATA_FIRMWARE_BUGFIX_VERSION 0 // for bugfix releases
 
 // DEPRECATED as of ConfigurableFirmata v2.8.1.
 // Use FIRMATA_PROTOCOL_[MAJOR|MINOR|BUGFIX]_VERSION instead.
 #define FIRMATA_MAJOR_VERSION   2
-#define FIRMATA_MINOR_VERSION   6
+#define FIRMATA_MINOR_VERSION   7
 #define FIRMATA_BUGFIX_VERSION  0
 // DEPRECATED as of ConfigurableFirmata v2.8.1.
 //Use FIRMATA_FIRMWARE_[MAJOR|MINOR|BUGFIX]_VERSION instead.
 #define FIRMWARE_MAJOR_VERSION  2
-#define FIRMWARE_MINOR_VERSION  10
-#define FIRMWARE_BUGFIX_VERSION 1
+#define FIRMWARE_MINOR_VERSION  11
+#define FIRMWARE_BUGFIX_VERSION 0
 
 #define MAX_DATA_BYTES          64 // max number of data bytes in incoming messages
 
