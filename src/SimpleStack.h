@@ -43,7 +43,6 @@ class SimpleStack {
 		uint8_t* _data;			    // Data buffer
     uint8_t _type;          // type 0 = eeprom, 1 = internal buffer, 2 = external buffer
     uint8_t _nameLength;    // Fixed string name length
-		uint16_t _readIndex;	  // Read index
 		uint16_t _writeIndex;	  // Write index
     readHandler _read;      // External read routine
     writeHandler _write;    // External write routine
@@ -65,19 +64,12 @@ class SimpleStack {
 		inline void clear()
 		{
       _writeIndex = 0;
-      _readIndex = 0;
 		}
 		inline void clearWriteIndex() {
         _writeIndex = 0;
     }
-		inline void clearReadIndex() {
-        _readIndex = 0;
-    }
 		inline void setWriteIndex(uint16_t start) {
         _writeIndex = start;
-    }
-		inline void setReadIndex(uint16_t start) {
-        _readIndex = start;
     }
 		void setData(uint8_t* array, uint16_t size);
 
@@ -97,7 +89,6 @@ class SimpleStack {
     //===========================================================
 		//Read routines
     //===========================================================
-		inline uint16_t readIndex() { return _readIndex; }
 		uint8_t* getData();
 		uint8_t popByte();
 		uint16_t popInteger();
@@ -108,6 +99,11 @@ class SimpleStack {
 		void popFixedStringArray(char** strings, uint8_t count, uint8_t length);
     void popArray(uint8_t* array, uint16_t* length);
     void popName(char* name);
+	// ==========================================================
+		// Peek routines
+	// ==========================================================
+	uint32_t peekLong();
+	bool empty();
 };
 // -------------------------------------------------------
 //Start SimpleStack without buffer
@@ -118,7 +114,6 @@ SimpleStack::SimpleStack()
     _write = 0;
 	_data = 0;
 	_buffer_size = 0;
-	_readIndex = 0;
 	_writeIndex = 0;
 }
 // -------------------------------------------------------
@@ -130,7 +125,6 @@ SimpleStack::SimpleStack(readHandler read, writeHandler write)
   _write = write;
 	_data = 0;
 	_buffer_size = 0;
-	_readIndex = 0;
 	_writeIndex = 0;
 }
 // -------------------------------------------------------
@@ -139,6 +133,11 @@ SimpleStack::SimpleStack(readHandler read, writeHandler write)
 SimpleStack::~SimpleStack()
 {
     dispose();
+}
+
+bool SimpleStack::empty()
+{
+	return _writeIndex == 0;
 }
 // -------------------------------------------------------
 //Initialize stack with different boards
@@ -149,7 +148,6 @@ void SimpleStack::begin(uint8_t nameLength)
     _buffer_size = 128; //TODO: Set different values fo different boards
     _write = 0;
     _type = 0;
-    _readIndex = 0;
     _writeIndex = 0;
 }
 // -------------------------------------------------------
@@ -165,7 +163,6 @@ void SimpleStack::begin(uint16_t buffer_size, uint8_t nameLength)
     _nameLength = nameLength;
 
     _type = 1;
-	_readIndex = 0;
 	_writeIndex = 0;
 }
 // -------------------------------------------------------
@@ -181,7 +178,6 @@ void SimpleStack::begin(uint8_t* buffer, uint16_t buffer_size, uint8_t nameLengt
     _nameLength = nameLength;
 
     _type = 2;
-	_readIndex = 0;
 	_writeIndex = 0;
 }
 //-------------------------------------------------------
@@ -236,6 +232,13 @@ void SimpleStack::pushLong(uint32_t value)
 		write(_writeIndex++, value >> 8);
 		write(_writeIndex++, value & 0xff);
 	}
+}
+
+uint32_t SimpleStack::peekLong()
+{
+	uint32_t value = popLong();
+	pushLong(value);
+	return value;
 }
 // -------------------------------------------------------
 //Push a float value (4 bytes)
@@ -320,15 +323,15 @@ uint8_t* SimpleStack::getData()
 // -------------------------------------------------------
 uint8_t SimpleStack::popByte()
 {
-	return read(_readIndex++); 
+	return read(_writeIndex--); 
 }
 // -------------------------------------------------------
 // Get integer (2 bytes) from stack 
 // -------------------------------------------------------
 uint16_t SimpleStack::popInteger()
 {
-	uint16_t value = read(_readIndex++) << 8;
-	value |= 		 read(_readIndex++);
+	uint16_t value = read(_writeIndex--) << 8;
+	value |= 		 read(_writeIndex--);
 	
 	return value; 
 }
@@ -337,10 +340,10 @@ uint16_t SimpleStack::popInteger()
 // -------------------------------------------------------
 uint32_t SimpleStack::popLong()
 {
-	uint32_t value = (uint32_t) read(_readIndex++) << 24;
-    value |= (uint32_t) read(_readIndex++) << 16;
-    value |= (uint32_t) read(_readIndex++) << 8;
-    value |= (uint32_t) read(_readIndex++);
+	uint32_t value = (uint32_t) read(_writeIndex--) << 24;
+    value |= (uint32_t) read(_writeIndex--) << 16;
+    value |= (uint32_t) read(_writeIndex--) << 8;
+    value |= (uint32_t) read(_writeIndex--);
     
 	return value; 
 }
@@ -349,10 +352,10 @@ uint32_t SimpleStack::popLong()
 // -------------------------------------------------------
 float SimpleStack::popFloat()
 {
-	uint32_t value = (uint32_t) read(_readIndex++) << 24;
-    value |= (uint32_t) read(_readIndex++) << 16;
-    value |= (uint32_t) read(_readIndex++) << 8;
-    value |= (uint32_t) read(_readIndex++);
+	uint32_t value = (uint32_t) read(_writeIndex--) << 24;
+    value |= (uint32_t) read(_writeIndex--) << 16;
+    value |= (uint32_t) read(_writeIndex--) << 8;
+    value |= (uint32_t) read(_writeIndex--);
 
     float f = *((float*) &value);
 
@@ -365,7 +368,7 @@ void SimpleStack::popFixedString(char* fixedString, uint8_t length)
 {
 	if (length < _buffer_size) {
 		for(uint8_t i=0; i < length; i++) 
-			fixedString[i] = read(_readIndex++);
+			fixedString[i] = read(_writeIndex--);
 		
 		fixedString[length] = 0;
 	}
@@ -378,8 +381,8 @@ void SimpleStack::popString(char* string)
 	uint8_t i = 0;
 	
     uint8_t r = 1;
-	while(r != 0 && _readIndex < _buffer_size) {
-        r = read(_readIndex++);
+	while(r != 0 && _writeIndex > 0) {
+        r = read(_writeIndex--);
 		string[i++] = r;
     }
 }
@@ -399,7 +402,7 @@ void SimpleStack::popName(char* name)
 {
     if (_nameLength < _buffer_size) {
         for(uint8_t i=0; i < _nameLength; i++) 
-            name[i] = read(_readIndex++);
+            name[i] = read(_writeIndex--);
         
         name[_nameLength] = 0;
     }
@@ -409,8 +412,8 @@ void SimpleStack::popName(char* name)
 // -------------------------------------------------------
 void SimpleStack::popArray(uint8_t* array, uint16_t* length)
 {
-    *length  = read(_readIndex++) << 8;
-    *length |= read(_readIndex++) & 0xff;
+    *length  = read(_writeIndex--) << 8;
+    *length |= read(_writeIndex--) & 0xff;
 
 	if (*length == 0)
         return;
@@ -419,7 +422,7 @@ void SimpleStack::popArray(uint8_t* array, uint16_t* length)
         array = (uint8_t*) malloc(*length);
         
     for(uint16_t i=0;i < *length;i++) 
-        array[i] = read(_readIndex++);
+        array[i] = read(_writeIndex--);
 }
 // -------------------------------------------------------
 // read byte from byte array or EEprom storage

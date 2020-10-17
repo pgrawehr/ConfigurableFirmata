@@ -18,7 +18,7 @@
 typedef byte BYTE;
 typedef unsigned int DWORD;
 
-const unsigned short OpcodeInfo[] =
+const byte OpcodeInfo[] PROGMEM =
 {
 #define OPDEF(c,s,pop,push,type,args,l,s1,s2,ctrl) type,
 //OPDEF(CEE_NOP, "nop", Pop0, Push0, InlineNone, 0, 1, 0xFF, 0x00, NEXT)
@@ -46,7 +46,7 @@ void FirmataIlExecutor::handleCapability(byte pin)
 	{
 		// Add args 0 and 1 and return the result
 		byte code[] = { 00, 0x02, 0x03, 0x58, 0x0A, 0x2B, 0x00, 0x06, 0x2A, };
-		int args[] = { 5, 7 };
+		int args[] = { 255, 7 };
 		int result = 0;
 		ExecuteIlCode(9, code, 10, 2, args, &result);
 		Firmata.sendString(F("Code execution returned"), result);
@@ -98,7 +98,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 	short LastPC = 0;
 	
 	SimpleStack stack;
-	stack.begin(10, 0);
+	stack.begin(10 * sizeof(int), 0);
 	int opResult = 0;
 	int locals[10]; // TODO: read from method data (including type)
 
@@ -124,10 +124,16 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 		
 		DWORD intermediate;
 		
+		byte opCodeType = pgm_read_byte(OpcodeInfo + instr);
+		
 		Firmata.sendString(F("Instr: "), instr);
-		Firmata.sendString(F("Type: "), OpcodeInfo[instr]);
+		Firmata.sendString(F("Type: "), opCodeType);
+		if (!stack.empty())
+		{
+			Firmata.sendString(F("Top of Stack: "), stack.peekLong());
+		}
             
-		switch (OpcodeInfo[instr])
+		switch (opCodeType)
         {
             case InlineNone:
             {
