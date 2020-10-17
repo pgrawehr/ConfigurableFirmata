@@ -7,13 +7,13 @@ class ObjectStack
 	// TODO: Replace int with void*
 	int _maxSize;
 	int _stackPtr = 0;
-	int* data;
+	uint32_t* data;
 	public:
 	ObjectStack(int maxSize)
 	{
 		_stackPtr = maxSize - 1;
 		_maxSize = maxSize;
-		data = (int*)malloc(_maxSize * sizeof(int));
+		data = (uint32_t*)malloc(_maxSize * sizeof(uint32_t));
 	}
 	
 	~ObjectStack()
@@ -22,19 +22,19 @@ class ObjectStack
 		data = NULL;
 	}
 	
-	void push(int object)
+	void push(uint32_t object)
 	{
 		data[_stackPtr] = object;
 		_stackPtr--;
 	}
 	
-	int pop()
+	uint32_t pop()
 	{
 		_stackPtr ++;
 		return data[_stackPtr];
 	}
 	
-	int peek()
+	uint32_t peek()
 	{
 		return data[_stackPtr + 1];
 	}

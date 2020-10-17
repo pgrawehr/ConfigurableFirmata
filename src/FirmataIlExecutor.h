@@ -16,6 +16,20 @@
 #include <ConfigurableFirmata.h>
 #include <FirmataFeature.h>
 
+#define IL_EXECUTE_NOW 0
+#define IL_LOAD 1
+
+#define MAX_METHODS 10
+#define MAX_PARAMETERS 10
+
+struct IlCode
+{
+	byte methodNumber;
+	byte methodLength;
+	byte* methodIl;
+};
+
+
 class FirmataIlExecutor: public FirmataFeature
 {
   public:
@@ -26,7 +40,10 @@ class FirmataIlExecutor: public FirmataFeature
 	void reset();
  
   private:
-    void LoadIlDataStream(byte argc, byte* argv);
+    void LoadIlDataStream(byte codeReference, byte codeLength, byte offset, byte argc, byte* argv);
+	void DecodeParametersAndExecute(byte codeReference, byte argc, byte* argv);
+	
+	IlCode _methods[MAX_METHODS];
 };
 
 

@@ -102,6 +102,8 @@ boolean FirmataScheduler::handleSysex(byte command, byte argc, byte* argv)
           {
             reset();
           }
+		default:
+		  return false;
       }
     }
     return true;

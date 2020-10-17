@@ -492,7 +492,7 @@ void FirmataClass::sendString(const __FlashStringHelper* flashString, int errorD
   for (int i = 0; i < len; i++) {
     sendValueAsTwo7bitBytes(pgm_read_byte(((const char*)flashString) + i));
   }
-  String error = String(errorData, DEC);
+  String error = String(errorData, HEX);
   for (int i = 0; i < error.length(); i++) {
     sendValueAsTwo7bitBytes((byte)error.charAt(i));
   }

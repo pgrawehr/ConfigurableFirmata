@@ -16,7 +16,7 @@
 #include "openum.h"
 #include "ObjectStack.h"
 typedef byte BYTE;
-typedef unsigned int DWORD;
+typedef uint32_t DWORD;
 
 const byte OpcodeInfo[] PROGMEM =
 {
@@ -26,7 +26,7 @@ const byte OpcodeInfo[] PROGMEM =
 #undef OPDEF
 };
 
-bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* argList, int* returnValue);
+bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t* argList, uint32_t* returnValue);
 OPCODE DecodeOpcode(const BYTE *pCode, DWORD *pdwLen);
 
 boolean FirmataIlExecutor::handlePinMode(byte pin, int mode)
@@ -42,7 +42,7 @@ FirmataIlExecutor::FirmataIlExecutor()
 void FirmataIlExecutor::handleCapability(byte pin)
 {
 	// TEST CODE only!
-	if (pin == 0)
+	/* if (pin == 0)
 	{
 		// Add args 0 and 1 and return the result
 		byte code[] = { 00, 0x02, 0x03, 0x58, 0x0A, 0x2B, 0x00, 0x06, 0x2A, };
@@ -50,37 +50,126 @@ void FirmataIlExecutor::handleCapability(byte pin)
 		int result = 0;
 		ExecuteIlCode(9, code, 10, 2, args, &result);
 		Firmata.sendString(F("Code execution returned"), result);
-	}
+	}*/
 }
 
 boolean FirmataIlExecutor::handleSysex(byte command, byte argc, byte *argv)
 {
   switch (command) {
     case SCHEDULER_DATA:
-		  if (argc < 2)
+		  if (argc < 3)
 		  {
 			  Firmata.sendString(F("Error in Scheduler command: Not enough parameters"));
 			  return false;
 		  }
-		  if (argv[1] != 0xFF)
+		  if (argv[0] != 0xFF)
 		  {
 			  // Scheduler message type must be 0xFF, specific meaning follows
 			  return false;
 		  }
-		  if (argc < 4)
-		  {
-			  Firmata.sendString(F("Not enough IL data parameters"));
-			  return false;
-		  }
-        LoadIlDataStream(argc - 2, argv + 2);
+		  
+		switch(argv[1])
+		{
+			case IL_LOAD: 
+				if (argc < 4)
+				{
+					Firmata.sendString(F("Not enough IL data parameters"));
+					return false;
+				}
+				LoadIlDataStream(argv[2], argv[3], argv[4], argc - 5, argv + 5);
+			break;
+			case IL_EXECUTE_NOW:
+				DecodeParametersAndExecute(argv[2], argc-3, argv + 3);
+			break;
+		}
+        
         return true;
   }
   return false;
 }
 
-void FirmataIlExecutor::LoadIlDataStream(byte argc, byte* argv)
+void FirmataIlExecutor::LoadIlDataStream(byte codeReference, byte codeLength, byte offset, byte argc, byte* argv)
 {
+	Firmata.sendString(F("Loading IL Data from offset "), offset);
+	if (offset == 0)
+	{
+		byte* decodedIl = (byte*)malloc(argc * 2);
+		int j = 0;
+		for (byte i = 0; i < argc; i += 2) {
+			  decodedIl[j++] = argv[i] + (argv[i + 1] << 7);
+		}
+		_methods[codeReference].methodNumber = codeReference;
+		_methods[codeReference].methodLength = codeLength;
+		_methods[codeReference].methodIl = decodedIl;
+	}
+	else 
+	{
+		byte* decodedIl = _methods[codeReference].methodIl + offset;
+		int j = 0;
+		for (byte i = 0; i < argc; i += 2) {
+			  decodedIl[j++] = argv[i] + (argv[i + 1] << 7);
+		}
+	}
+	Firmata.sendString(F("Loaded IL Data from offset "), offset);
+}
+
+void FirmataIlExecutor::DecodeParametersAndExecute(byte codeReference, byte argc, byte* argv)
+{
+	Firmata.sendString(F("Decoding input parameters."));
+	uint32_t parameters[MAX_PARAMETERS];
+	byte param = 0;
+	byte b = 0;
+	for (byte i = 0; i < argc; i += 2) 
+	{
+        uint32_t nextByte = argv[i] + (argv[i + 1] << 7);
+		if (b == 0)
+		{
+			parameters[param] = nextByte;
+			b = 1;
+		}
+		else if (b == 1)
+		{
+			parameters[param] |= nextByte << 8;
+			b = 2;
+		}
+		else if (b == 2)
+		{
+			parameters[param] |= nextByte << 16;
+			b = 3;
+		}
+		else
+		{
+			parameters[param] |= nextByte << 24;
+			param++;
+			b = 0;
+		}
+	}
 	
+	uint32_t result = 0;
+	Firmata.sendString(F("Code execution starts. Argument 0 is "), parameters[0]);
+	bool execResult = ExecuteIlCode(_methods[codeReference].methodLength, 
+		_methods[codeReference].methodIl, 10, param - 1, parameters, &result);
+	
+	byte replyData[4];
+	// Reply format:
+	// byte 0: 1 on success, 0 on (technical) failure, such as unsupported opcode
+	// byte 1: Number of integer values returned
+	// bytes 2+: Integer return values
+	
+	replyData[0] = result & 0xFF;
+	replyData[1] = (result > 8) & 0xFF;
+	replyData[2] = (result > 16) & 0xFF;
+	replyData[3] = (result > 24) & 0xFF;
+
+	Firmata.startSysex();
+	Firmata.write(SCHEDULER_DATA);
+	Firmata.write(execResult ? 1 : 0);
+	Firmata.write(1);
+	for (int i = 0; i < 4; i++)
+	{
+		Firmata.sendValueAsTwo7bitBytes(replyData[i]);
+	}
+	Firmata.endSysex();
 }
 
 void InvalidOpCode(int offset)
@@ -92,14 +181,13 @@ void InvalidOpCode(int offset)
 // - codeLength is correct
 // - argc matches argList
 // - It was validated that the method has exactly argc arguments
-bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* argList, int* returnValue)
+bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t* argList, uint32_t* returnValue)
 {
 	short PC = 0;
 	short LastPC = 0;
 	
 	ObjectStack stack(10);
-	int opResult = 0;
-	int locals[10]; // TODO: read from method data (including type)
+	uint32_t locals[10]; // TODO: read from method data (including type)
 
     while (PC < codeLength)
     {
@@ -118,10 +206,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 		
 		PC += Len;
 		
-		DWORD tk;
-        DWORD tkType;
-		
-		DWORD intermediate;
+		uint32_t intermediate;
 		
 		byte opCodeType = pgm_read_byte(OpcodeInfo + instr);
 		
@@ -139,7 +224,14 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
                 switch (instr)
                 {
                     case CEE_RET:
-						*returnValue = stack.pop();
+						if (!stack.empty())
+						{
+							*returnValue = stack.pop();
+						}
+						else 
+						{
+							*returnValue = 0;
+						}
 						return true;
                     case CEE_THROW:
 						InvalidOpCode(LastPC);
@@ -792,5 +884,13 @@ OPCODE DecodeOpcode(const BYTE *pCode, DWORD *pdwLen)
 
 void FirmataIlExecutor::reset()
 {
+	for (int i = 0; i < MAX_METHODS; i++)
+	{
+		if (_methods[i].methodIl != NULL)
+		{
+			free(_methods[i].methodIl);
+			_methods[i].methodIl = NULL;
+		}
+	}
 }
 
