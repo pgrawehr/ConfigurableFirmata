@@ -14,7 +14,7 @@
 #include <ConfigurableFirmata.h>
 #include "FirmataIlExecutor.h"
 #include "openum.h"
-#include "SimpleStack.h"
+#include "ObjectStack.h"
 typedef byte BYTE;
 typedef unsigned int DWORD;
 
@@ -97,8 +97,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 	short PC = 0;
 	short LastPC = 0;
 	
-	SimpleStack stack;
-	stack.begin(10 * sizeof(int), 0);
+	ObjectStack stack(10);
 	int opResult = 0;
 	int locals[10]; // TODO: read from method data (including type)
 
@@ -130,7 +129,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 		Firmata.sendString(F("Type: "), opCodeType);
 		if (!stack.empty())
 		{
-			Firmata.sendString(F("Top of Stack: "), stack.peekLong());
+			Firmata.sendString(F("Top of Stack: "), stack.peek());
 		}
             
 		switch (opCodeType)
@@ -140,7 +139,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
                 switch (instr)
                 {
                     case CEE_RET:
-						*returnValue = (int)stack.popLong();
+						*returnValue = stack.pop();
 						return true;
                     case CEE_THROW:
 						InvalidOpCode(LastPC);
@@ -148,28 +147,91 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 					case CEE_NOP:
 						break;
 					case CEE_LDARG_0:
-						stack.pushLong(argList[0]);
+						stack.push(argList[0]);
 						break;
 					case CEE_LDARG_1:
-						stack.pushLong(argList[1]);
+						stack.push(argList[1]);
+						break;
+					case CEE_LDARG_2:
+						stack.push(argList[2]);
+						break;
+					case CEE_LDARG_3:
+						stack.push(argList[3]);
 						break;
 					case CEE_STLOC_0:
-						intermediate = stack.popLong();
+						intermediate = stack.pop();
 						locals[0] = intermediate;
 						break;
 					case CEE_STLOC_1:
-						intermediate = stack.popLong();
+						intermediate = stack.pop();
 						locals[1] = intermediate;
 						break;
+					case CEE_STLOC_2:
+						intermediate = stack.pop();
+						locals[2] = intermediate;
+						break;
+					case CEE_STLOC_3:
+						intermediate = stack.pop();
+						locals[3] = intermediate;
+						break;
 					case CEE_LDLOC_0:
-						stack.pushLong(locals[0]);
+						stack.push(locals[0]);
 						break;
 					case CEE_LDLOC_1:
-						stack.pushLong(locals[1]);
+						stack.push(locals[1]);
+						break;
+					case CEE_LDLOC_2:
+						stack.push(locals[2]);
+						break;
+					case CEE_LDLOC_3:
+						stack.push(locals[3]);
 						break;
 					case CEE_ADD:
-						intermediate = stack.popLong() + stack.popLong();
-						stack.pushLong(intermediate);
+						intermediate = stack.pop() + stack.pop();
+						stack.push(intermediate);
+						break;
+					case CEE_SUB:
+						intermediate = stack.pop() - stack.pop();
+						stack.push(intermediate);
+						break;
+					case CEE_CEQ:
+						stack.push(stack.pop() == stack.pop());
+						break;
+					case CEE_CGT:
+						stack.push(stack.pop() > stack.pop());
+						break;
+					case CEE_NOT:
+						stack.push(~stack.pop());
+						break;
+					case CEE_LDC_I4_0:
+						stack.push(0);
+						break;
+					case CEE_LDC_I4_1:
+						stack.push(1);
+						break;
+					case CEE_LDC_I4_2:
+						stack.push(2);
+						break;
+					case CEE_LDC_I4_3:
+						stack.push(3);
+						break;
+					case CEE_LDC_I4_4:
+						stack.push(4);
+						break;
+					case CEE_LDC_I4_5:
+						stack.push(5);
+						break;
+					case CEE_LDC_I4_6:
+						stack.push(6);
+						break;
+					case CEE_LDC_I4_7:
+						stack.push(7);
+						break;
+					case CEE_LDC_I4_8:
+						stack.push(8);
+						break;
+					case CEE_LDC_I4_M1:
+						stack.push(-1);
 						break;
                     default:
 						InvalidOpCode(LastPC);
@@ -407,12 +469,65 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, int* arg
 
             case ShortInlineBrTarget:
             {
-				Firmata.sendString("Jump");
-                char offset = (char) pCode[PC];
-                long dest = (PC + 1) + (long) offset;
-                // PC++;
+				bool doBranch = false;
+				switch (instr)
+				{
+					case CEE_BR_S:
+						doBranch = true;
+						break;
+					case CEE_BEQ_S:
+						doBranch = stack.pop() == stack.pop();
+						break;
+					case CEE_BGE_S:
+						doBranch = stack.pop() >= stack.pop();
+						break;
+					case CEE_BLE_S:
+						doBranch = stack.pop() <= stack.pop();
+						break;
+					case CEE_BGT_S:
+						doBranch = stack.pop() > stack.pop();
+						break;
+					case CEE_BLT_S:
+						doBranch = stack.pop() < stack.pop();
+						break;
+					case CEE_BGE_UN_S:
+						doBranch = (uint32_t)stack.pop() >= (uint32_t)stack.pop();
+						break;
+					case CEE_BGT_UN_S:
+						doBranch = (uint32_t)stack.pop() > (uint32_t)stack.pop();
+						break;
+					case CEE_BLE_UN_S:
+						doBranch = (uint32_t)stack.pop() <= (uint32_t)stack.pop();
+						break;
+					case CEE_BLT_UN_S:
+						doBranch = (uint32_t)stack.pop() < (uint32_t)stack.pop();
+						break;
+					case CEE_BNE_UN_S:
+						doBranch = (uint32_t)stack.pop() != (uint32_t)stack.pop();
+						break;
+					case CEE_BRFALSE_S:
+						doBranch = stack.pop() == 0;
+						break;
+					case CEE_BRTRUE_S:
+						doBranch = stack.pop() == 0;
+						break;
+					default:
+						InvalidOpCode(LastPC);
+						return false;
+				}
+				
+				if (doBranch)
+				{
+					char offset = (char) pCode[PC];
+					long dest = (PC + 1) + (long) offset;
                 
-				PC = dest;
+					PC = dest;
+				}
+				else 
+				{
+					PC++; // Skip offset byte
+				}
+				
                 break;
             }
 /*
