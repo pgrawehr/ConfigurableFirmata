@@ -26,7 +26,6 @@ const byte OpcodeInfo[] PROGMEM =
 #undef OPDEF
 };
 
-bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t* argList, uint32_t* returnValue);
 OPCODE DecodeOpcode(const BYTE *pCode, DWORD *pdwLen);
 
 boolean FirmataIlExecutor::handlePinMode(byte pin, int mode)
@@ -81,6 +80,9 @@ boolean FirmataIlExecutor::handleSysex(byte command, byte argc, byte *argv)
 			case IL_EXECUTE_NOW:
 				DecodeParametersAndExecute(argv[2], argc-3, argv + 3);
 			break;
+			case IL_DECLARE:
+				LoadIlDeclaration(argv[2], argv[3], argv[4], argc - 5, argv + 5);
+				break;
 		}
         
         return true;
@@ -88,17 +90,41 @@ boolean FirmataIlExecutor::handleSysex(byte command, byte argc, byte *argv)
   return false;
 }
 
+void FirmataIlExecutor::LoadIlDeclaration(byte codeReference, byte flags, byte maxLocals, byte argc, byte* argv)
+{
+	if (_methods[codeReference].methodIl != NULL)
+	{
+		free(_methods[codeReference].methodIl);
+		_methods[codeReference].methodIl = NULL;
+	}
+	
+	_methods[codeReference].methodFlags = flags;
+	_methods[codeReference].maxLocals = maxLocals;
+	uint32_t token = DecodeUint32(argv);
+	_methods[codeReference].methodToken = token;
+	Firmata.sendString(F("Loaded metadata for token: "), token);
+}
+
 void FirmataIlExecutor::LoadIlDataStream(byte codeReference, byte codeLength, byte offset, byte argc, byte* argv)
 {
-	Firmata.sendString(F("Loading IL Data from offset "), offset);
 	if (offset == 0)
 	{
-		byte* decodedIl = (byte*)malloc(argc * 2);
+		if (_methods[codeReference].methodIl != NULL)
+		{
+			free(_methods[codeReference].methodIl);
+			_methods[codeReference].methodIl = NULL;
+		}
+		byte* decodedIl = (byte*)malloc(codeLength);
+		if (decodedIl == NULL)
+		{
+			Firmata.sendString(F("Not enough memory. "), codeLength);
+			return;
+		}
 		int j = 0;
-		for (byte i = 0; i < argc; i += 2) {
+		for (byte i = 0; i < argc; i += 2) 
+		{
 			  decodedIl[j++] = argv[i] + (argv[i + 1] << 7);
 		}
-		_methods[codeReference].methodNumber = codeReference;
 		_methods[codeReference].methodLength = codeLength;
 		_methods[codeReference].methodIl = decodedIl;
 	}
@@ -106,16 +132,31 @@ void FirmataIlExecutor::LoadIlDataStream(byte codeReference, byte codeLength, by
 	{
 		byte* decodedIl = _methods[codeReference].methodIl + offset;
 		int j = 0;
-		for (byte i = 0; i < argc; i += 2) {
+		for (byte i = 0; i < argc; i += 2) 
+		{
 			  decodedIl[j++] = argv[i] + (argv[i + 1] << 7);
 		}
 	}
 	Firmata.sendString(F("Loaded IL Data from offset "), offset);
 }
 
+uint32_t FirmataIlExecutor::DecodeUint32(byte* argv)
+{
+	uint32_t result = 0;
+	int shift = 0;
+	for (byte i = 0; i < 8; i += 2) 
+	{
+        uint32_t nextByte = argv[i] + (argv[i + 1] << 7);
+		result = result + (nextByte << shift);
+		shift += 8;
+	}
+	
+	return result;
+}
+
 void FirmataIlExecutor::DecodeParametersAndExecute(byte codeReference, byte argc, byte* argv)
 {
-	Firmata.sendString(F("Decoding input parameters."));
+	Firmata.sendString(F("Decoding input parameters: "), argc);
 	uint32_t parameters[MAX_PARAMETERS];
 	byte param = 0;
 	byte b = 0;
@@ -147,8 +188,12 @@ void FirmataIlExecutor::DecodeParametersAndExecute(byte codeReference, byte argc
 	
 	uint32_t result = 0;
 	Firmata.sendString(F("Code execution starts. Argument 0 is "), parameters[0]);
-	bool execResult = ExecuteIlCode(_methods[codeReference].methodLength, 
-		_methods[codeReference].methodIl, 10, param - 1, parameters, &result);
+	ExecutionState* rootState = new ExecutionState(_methods[codeReference].maxLocals);
+	
+	bool execResult = ExecuteIlCode(rootState, _methods[codeReference].methodLength, 
+		_methods[codeReference].methodIl, param - 1, parameters, &result);
+	
+	delete rootState;
 	
 	byte replyData[4];
 	// Reply format:
@@ -157,9 +202,9 @@ void FirmataIlExecutor::DecodeParametersAndExecute(byte codeReference, byte argc
 	// bytes 2+: Integer return values
 	
 	replyData[0] = result & 0xFF;
-	replyData[1] = (result > 8) & 0xFF;
-	replyData[2] = (result > 16) & 0xFF;
-	replyData[3] = (result > 24) & 0xFF;
+	replyData[1] = (result >> 8) & 0xFF;
+	replyData[2] = (result >> 16) & 0xFF;
+	replyData[3] = (result >> 24) & 0xFF;
 
 	Firmata.startSysex();
 	Firmata.write(SCHEDULER_DATA);
@@ -181,14 +226,21 @@ void InvalidOpCode(int offset)
 // - codeLength is correct
 // - argc matches argList
 // - It was validated that the method has exactly argc arguments
-bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t* argList, uint32_t* returnValue)
+bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byte* pCode, int argc, uint32_t* argList, uint32_t* returnValue)
 {
-	short PC = 0;
+	ExecutionState* currentFrame = state;
+	while (currentFrame->_next != NULL)
+	{
+		currentFrame = currentFrame->_next;
+	}
+	
+	short PC = currentFrame->_pc;
 	short LastPC = 0;
 	
-	ObjectStack stack(10);
-	uint32_t locals[10]; // TODO: read from method data (including type)
-
+	ObjectStack& stack = currentFrame->_executionStack;
+	uint32_t* locals = currentFrame->_locals;
+	uint32_t* argList = currentFrame->_args;
+	
     while (PC < codeLength)
     {
         DWORD   Len;
@@ -216,6 +268,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t
 		{
 			Firmata.sendString(F("Top of Stack: "), stack.peek());
 		}
+		Firmata.sendString(F("First local: "), locals[0]);
             
 		switch (opCodeType)
         {
@@ -224,6 +277,7 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t
                 switch (instr)
                 {
                     case CEE_RET:
+					{
 						if (!stack.empty())
 						{
 							*returnValue = stack.pop();
@@ -232,7 +286,28 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t
 						{
 							*returnValue = 0;
 						}
-						return true;
+						// Remove current method from execution stack
+						ExecutionState* frame = state;
+						if (frame == currentFrame)
+						{
+							// We're at the outermost frame
+							return true;
+						}
+						
+						// Find the frame which has the current frame as next (should be the second-last on the stack now)
+						while (frame->_next != currentFrame)
+						{
+							frame = frame->_next;
+						}
+						// Remove the last frame and set the PC for the new current frame
+						frame->_next = NULL;
+						delete currentFrame;
+						currentFrame = frame;
+						PC = currentFrame->_pc;
+						locals = currentFrame->_locals;
+						stack = currentFrame->_executionStack;
+					}
+					break;
                     case CEE_THROW:
 						InvalidOpCode(LastPC);
                         return false;
@@ -842,6 +917,33 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t
                 break;
             }
 			*/
+			
+			case InlineMethod:
+            {
+				uint32_t tk = ((uint32_t)pCode[PC]) | ((uint32_t)pCode[PC+1] << 8) | ((uint32_t)pCode[PC+2] << 16) | ((uint32_t)pCode[PC+3] << 24);
+                PC += 4;
+
+                int method = ResolveToken(tk);
+				
+				if (method == -1)
+				{
+					return false;
+				}
+				
+				int stackSize = _methods[method].maxLocals;
+				if (_methods[method].methodFlags & METHOD_SPECIAL)
+				{
+					stackSize = 0;
+				}
+				ExecutionState* newState = new ExecutionState(stackSize);
+				currentFrame->_next = newState;
+				
+				// Start of the called method
+				PC = 0;
+				locals = currentFrame->_locals;
+				stack = currentFrame->_executionStack;
+                break;
+            }
 			default:
 				InvalidOpCode(LastPC);
 				return false;
@@ -853,6 +955,21 @@ bool ExecuteIlCode(int codeLength, byte* pCode, int maxStack, int argc, uint32_t
 	return false;
 }
 
+int FirmataIlExecutor::ResolveToken(uint32_t token)
+{
+	// uint32_t tkType = TypeFromToken(tk);
+
+    for (int i = 0; i < MAX_METHODS; i++)
+	{
+		if (_methods[i].methodToken == token)
+		{
+			return i;
+		}
+	}
+	
+	Firmata.sendString(F("Unresolved method token: "), token);
+	return -1;
+}
 
 OPCODE DecodeOpcode(const BYTE *pCode, DWORD *pdwLen)
 {

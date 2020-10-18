@@ -179,7 +179,7 @@ class FirmataClass
     void sendDigital(byte pin, int value); // TODO implement this
     void sendDigitalPort(byte portNumber, int portData);
     void sendString(const __FlashStringHelper* flashString);
-	void sendString(const __FlashStringHelper* flashString, int errorData);
+	void sendString(const __FlashStringHelper* flashString, uint32_t errorData);
     void sendString(const char *string);
     void sendString(byte command, const char *string);
     void sendSysex(byte command, byte bytec, byte *bytev);

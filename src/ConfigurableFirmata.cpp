@@ -484,7 +484,7 @@ void FirmataClass::sendString(const __FlashStringHelper* flashString)
  * @param string A pointer to the string in flash memory
  * @param errorData A number that is sent out with the string (i.e. error code, unrecognized command number)
  */
-void FirmataClass::sendString(const __FlashStringHelper* flashString, int errorData)
+void FirmataClass::sendString(const __FlashStringHelper* flashString, uint32_t errorData)
 {
   int len = strlen_P((const char*)flashString);
   startSysex();
