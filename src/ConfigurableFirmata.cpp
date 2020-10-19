@@ -459,9 +459,26 @@ void FirmataClass::sendString(byte command, const char *string)
  * Send a string to the Firmata host application.
  * @param string A pointer to the char string
  */
-void FirmataClass::sendString(const char *string)
+void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeOfArgs, ...) 
 {
-  sendString(STRING_DATA, string);
+	int len = strlen_P((const char*)flashString);
+	va_list va;
+    va_start (va, sizeOfArgs);
+	startSysex();
+	FirmataStream->write(STRING_DATA);
+	for (int i = 0; i < len; i++) 
+	{
+		sendValueAsTwo7bitBytes(pgm_read_byte(((const char*)flashString) + i));
+    }
+	// Explicitly send the terminating 0
+	sendValueAsTwo7bitBytes(0);
+	for (int i = 0; i < sizeOfArgs; i++)
+	{
+		int nextByte = ((byte*)va)[i];
+		sendValueAsTwo7bitBytes((byte)nextByte);
+	}
+	endSysex();
+    va_end (va);
 }
 
 /**
@@ -484,6 +501,7 @@ void FirmataClass::sendString(const __FlashStringHelper* flashString)
  * @param string A pointer to the string in flash memory
  * @param errorData A number that is sent out with the string (i.e. error code, unrecognized command number)
  */
+ 
 void FirmataClass::sendString(const __FlashStringHelper* flashString, uint32_t errorData)
 {
   int len = strlen_P((const char*)flashString);

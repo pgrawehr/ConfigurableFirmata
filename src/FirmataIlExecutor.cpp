@@ -78,7 +78,7 @@ boolean FirmataIlExecutor::handleSysex(byte command, byte argc, byte *argv)
 				LoadIlDataStream(argv[2], argv[3], argv[4], argc - 5, argv + 5);
 			break;
 			case IL_EXECUTE_NOW:
-				DecodeParametersAndExecute(argv[2], argc-3, argv + 3);
+				DecodeParametersAndExecute(argv[2], argc - 3, argv + 3);
 			break;
 			case IL_DECLARE:
 				LoadIlDeclaration(argv[2], argv[3], argv[4], argc - 5, argv + 5);
@@ -90,7 +90,7 @@ boolean FirmataIlExecutor::handleSysex(byte command, byte argc, byte *argv)
   return false;
 }
 
-void FirmataIlExecutor::LoadIlDeclaration(byte codeReference, byte flags, byte maxLocals, byte argc, byte* argv)
+void FirmataIlExecutor::LoadIlDeclaration(byte codeReference, int flags, byte maxLocals, byte argc, byte* argv)
 {
 	if (_methods[codeReference].methodIl != NULL)
 	{
@@ -100,9 +100,10 @@ void FirmataIlExecutor::LoadIlDeclaration(byte codeReference, byte flags, byte m
 	
 	_methods[codeReference].methodFlags = flags;
 	_methods[codeReference].maxLocals = maxLocals;
-	uint32_t token = DecodeUint32(argv);
+	_methods[codeReference].numArgs = argv[0];
+	uint32_t token = DecodeUint32(argv + 1);
 	_methods[codeReference].methodToken = token;
-	Firmata.sendString(F("Loaded metadata for token: "), token);
+	Firmata.sendStringf(F("Loaded metadata for token 0x%lx, Flags 0x%x"), 6, token, flags);
 }
 
 void FirmataIlExecutor::LoadIlDataStream(byte codeReference, byte codeLength, byte offset, byte argc, byte* argv)
@@ -137,7 +138,7 @@ void FirmataIlExecutor::LoadIlDataStream(byte codeReference, byte codeLength, by
 			  decodedIl[j++] = argv[i] + (argv[i + 1] << 7);
 		}
 	}
-	Firmata.sendString(F("Loaded IL Data from offset "), offset);
+	Firmata.sendStringf(F("Loaded IL Data for method %d, offset %x"), 4, codeReference, offset);
 }
 
 uint32_t FirmataIlExecutor::DecodeUint32(byte* argv)
@@ -156,42 +157,16 @@ uint32_t FirmataIlExecutor::DecodeUint32(byte* argv)
 
 void FirmataIlExecutor::DecodeParametersAndExecute(byte codeReference, byte argc, byte* argv)
 {
-	Firmata.sendString(F("Decoding input parameters: "), argc);
-	uint32_t parameters[MAX_PARAMETERS];
-	byte param = 0;
-	byte b = 0;
-	for (byte i = 0; i < argc; i += 2) 
+	uint32_t result = 0;
+	Firmata.sendStringf(F("Code execution for %d starts. Stack Size is %d."), 4, codeReference, _methods[codeReference].maxLocals);
+	ExecutionState* rootState = new ExecutionState(codeReference, _methods[codeReference].maxLocals, _methods[codeReference].numArgs);
+	for (int i = 0; i < _methods[codeReference].numArgs; i++)
 	{
-        uint32_t nextByte = argv[i] + (argv[i + 1] << 7);
-		if (b == 0)
-		{
-			parameters[param] = nextByte;
-			b = 1;
-		}
-		else if (b == 1)
-		{
-			parameters[param] |= nextByte << 8;
-			b = 2;
-		}
-		else if (b == 2)
-		{
-			parameters[param] |= nextByte << 16;
-			b = 3;
-		}
-		else
-		{
-			parameters[param] |= nextByte << 24;
-			param++;
-			b = 0;
-		}
+		rootState->UpdateArg(i, DecodeUint32(argv + (8 * i)));
 	}
 	
-	uint32_t result = 0;
-	Firmata.sendString(F("Code execution starts. Argument 0 is "), parameters[0]);
-	ExecutionState* rootState = new ExecutionState(_methods[codeReference].maxLocals);
-	
 	bool execResult = ExecuteIlCode(rootState, _methods[codeReference].methodLength, 
-		_methods[codeReference].methodIl, param - 1, parameters, &result);
+		_methods[codeReference].methodIl, &result);
 	
 	delete rootState;
 	
@@ -222,11 +197,43 @@ void InvalidOpCode(int offset)
 	Firmata.sendString(F("Invalid/Unsupported opcode at offset "), offset);
 }
 
+// Executes the given OS function. Note that args[0] is the this pointer
+uint32_t ExecuteSpecialMethod(byte method, ObjectList* args)
+{
+	switch(method)
+	{
+		case 0: // Sleep(int delay)
+			delay(args->Get(1));
+			break;
+		case 1: // PinMode(int pin, PinMode mode)
+		{
+			int mode = INPUT;
+			if (args->Get(2) == 1)
+			{
+				mode = OUTPUT;
+			}
+			if (args->Get(2) == 2)
+			{
+				mode = INPUT_PULLUP;
+			}
+			pinMode(args->Get(1), mode);
+			break;
+		}
+		case 2: // Write(int pin, int value)
+			digitalWrite(args->Get(1), args->Get(2));
+			break;
+		default:
+			Firmata.sendString(F("Unknown internal method: "), method);
+			break;
+	}
+	return 0;
+}
+
 // Preconditions for save execution: 
 // - codeLength is correct
 // - argc matches argList
 // - It was validated that the method has exactly argc arguments
-bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byte* pCode, int argc, uint32_t* argList, uint32_t* returnValue)
+bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byte* pCode, uint32_t* returnValue)
 {
 	ExecutionState* currentFrame = state;
 	while (currentFrame->_next != NULL)
@@ -234,22 +241,52 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 		currentFrame = currentFrame->_next;
 	}
 	
-	short PC = currentFrame->_pc;
 	short LastPC = 0;
 	
-	ObjectStack& stack = currentFrame->_executionStack;
-	uint32_t* locals = currentFrame->_locals;
-	uint32_t* argList = currentFrame->_args;
+	short PC = 0;
+	ObjectStack* stack;
+	ObjectList* locals;
+	ObjectList* arguments;
+	
+	currentFrame->ActivateState(&PC, &stack, &locals, &arguments);
 	
     while (PC < codeLength)
     {
         DWORD   Len;
         OPCODE  instr;
 		LastPC = PC;
+		int methodIndex = currentFrame->MethodIndex();
 		
-		Firmata.sendString(F("PC: "), PC);
-
-        instr = DecodeOpcode(&pCode[PC], &Len);
+		Firmata.sendStringf(F("PC: 0x%x in Method %d"), 4, PC, methodIndex);
+        
+		if (PC == 0 && (_methods[methodIndex].methodFlags & METHOD_SPECIAL))
+		{
+			int specialMethod = _methods[methodIndex].maxLocals;
+			Firmata.sendString(F("Executing special method "), specialMethod);
+			uint32_t retVal = ExecuteSpecialMethod(specialMethod, arguments);
+			// We're called into a "special" (built-in) method. 
+			// Perform a method return
+			ExecutionState* frame = currentFrame;
+			while (frame->_next != currentFrame)
+			{
+				frame = frame->_next;
+			}
+			// Remove the last frame and set the PC for the new current frame
+			frame->_next = NULL;
+			
+			delete currentFrame;
+			currentFrame = frame;
+			currentFrame->ActivateState(&PC, &stack, &locals, &arguments);
+			// If the method we just terminated is not of type void, we push the result to the 
+			// stack of the calling method
+			if ((_methods[methodIndex].methodFlags & METHOD_VOID) == 0)
+			{
+				stack->push(retVal);
+			}
+			continue;
+		}
+		
+		instr = DecodeOpcode(&pCode[PC], &Len);
         if (instr == CEE_COUNT)
         {
 			InvalidOpCode(LastPC);
@@ -262,13 +299,10 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 		
 		byte opCodeType = pgm_read_byte(OpcodeInfo + instr);
 		
-		Firmata.sendString(F("Instr: "), instr);
-		Firmata.sendString(F("Type: "), opCodeType);
-		if (!stack.empty())
+		if (!stack->empty())
 		{
-			Firmata.sendString(F("Top of Stack: "), stack.peek());
+			Firmata.sendString(F("Top of Stack: "), stack->peek());
 		}
-		Firmata.sendString(F("First local: "), locals[0]);
             
 		switch (opCodeType)
         {
@@ -278,9 +312,9 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
                 {
                     case CEE_RET:
 					{
-						if (!stack.empty())
+						if (!stack->empty())
 						{
-							*returnValue = stack.pop();
+							*returnValue = stack->pop();
 						}
 						else 
 						{
@@ -301,11 +335,16 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 						}
 						// Remove the last frame and set the PC for the new current frame
 						frame->_next = NULL;
+						int methodIndex = currentFrame->MethodIndex();
 						delete currentFrame;
 						currentFrame = frame;
-						PC = currentFrame->_pc;
-						locals = currentFrame->_locals;
-						stack = currentFrame->_executionStack;
+						currentFrame->ActivateState(&PC, &stack, &locals, &arguments);
+						// If the method we just terminated is not of type void, we push the result to the 
+						// stack of the calling method
+						if ((_methods[methodIndex].methodFlags & METHOD_VOID) == 0)
+						{
+							stack->push(*returnValue);
+						}
 					}
 					break;
                     case CEE_THROW:
@@ -314,91 +353,91 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 					case CEE_NOP:
 						break;
 					case CEE_LDARG_0:
-						stack.push(argList[0]);
+						stack->push(arguments->Get(0));
 						break;
 					case CEE_LDARG_1:
-						stack.push(argList[1]);
+						stack->push(arguments->Get(1));
 						break;
 					case CEE_LDARG_2:
-						stack.push(argList[2]);
+						stack->push(arguments->Get(2));
 						break;
 					case CEE_LDARG_3:
-						stack.push(argList[3]);
+						stack->push(arguments->Get(3));
 						break;
 					case CEE_STLOC_0:
-						intermediate = stack.pop();
-						locals[0] = intermediate;
+						intermediate = stack->pop();
+						locals->Set(0, intermediate);
 						break;
 					case CEE_STLOC_1:
-						intermediate = stack.pop();
-						locals[1] = intermediate;
+						intermediate = stack->pop();
+						locals->Set(1, intermediate);
 						break;
 					case CEE_STLOC_2:
-						intermediate = stack.pop();
-						locals[2] = intermediate;
+						intermediate = stack->pop();
+						locals->Set(2, intermediate);
 						break;
 					case CEE_STLOC_3:
-						intermediate = stack.pop();
-						locals[3] = intermediate;
+						intermediate = stack->pop();
+						locals->Set(3, intermediate);
 						break;
 					case CEE_LDLOC_0:
-						stack.push(locals[0]);
+						stack->push(locals->Get(0));
 						break;
 					case CEE_LDLOC_1:
-						stack.push(locals[1]);
+						stack->push(locals->Get(1));
 						break;
 					case CEE_LDLOC_2:
-						stack.push(locals[2]);
+						stack->push(locals->Get(2));
 						break;
 					case CEE_LDLOC_3:
-						stack.push(locals[3]);
+						stack->push(locals->Get(3));
 						break;
 					case CEE_ADD:
-						intermediate = stack.pop() + stack.pop();
-						stack.push(intermediate);
+						intermediate = stack->pop() + stack->pop();
+						stack->push(intermediate);
 						break;
 					case CEE_SUB:
-						intermediate = stack.pop() - stack.pop();
-						stack.push(intermediate);
+						intermediate = stack->pop() - stack->pop();
+						stack->push(intermediate);
 						break;
 					case CEE_CEQ:
-						stack.push(stack.pop() == stack.pop());
+						stack->push(stack->pop() == stack->pop());
 						break;
 					case CEE_CGT:
-						stack.push(stack.pop() > stack.pop());
+						stack->push(stack->pop() > stack->pop());
 						break;
 					case CEE_NOT:
-						stack.push(~stack.pop());
+						stack->push(~stack->pop());
 						break;
 					case CEE_LDC_I4_0:
-						stack.push(0);
+						stack->push(0);
 						break;
 					case CEE_LDC_I4_1:
-						stack.push(1);
+						stack->push(1);
 						break;
 					case CEE_LDC_I4_2:
-						stack.push(2);
+						stack->push(2);
 						break;
 					case CEE_LDC_I4_3:
-						stack.push(3);
+						stack->push(3);
 						break;
 					case CEE_LDC_I4_4:
-						stack.push(4);
+						stack->push(4);
 						break;
 					case CEE_LDC_I4_5:
-						stack.push(5);
+						stack->push(5);
 						break;
 					case CEE_LDC_I4_6:
-						stack.push(6);
+						stack->push(6);
 						break;
 					case CEE_LDC_I4_7:
-						stack.push(7);
+						stack->push(7);
 						break;
 					case CEE_LDC_I4_8:
-						stack.push(8);
+						stack->push(8);
 						break;
 					case CEE_LDC_I4_M1:
-						stack.push(-1);
+						stack->push(-1);
 						break;
                     default:
 						InvalidOpCode(LastPC);
@@ -643,40 +682,40 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 						doBranch = true;
 						break;
 					case CEE_BEQ_S:
-						doBranch = stack.pop() == stack.pop();
+						doBranch = stack->pop() == stack->pop();
 						break;
 					case CEE_BGE_S:
-						doBranch = stack.pop() >= stack.pop();
+						doBranch = stack->pop() >= stack->pop();
 						break;
 					case CEE_BLE_S:
-						doBranch = stack.pop() <= stack.pop();
+						doBranch = stack->pop() <= stack->pop();
 						break;
 					case CEE_BGT_S:
-						doBranch = stack.pop() > stack.pop();
+						doBranch = stack->pop() > stack->pop();
 						break;
 					case CEE_BLT_S:
-						doBranch = stack.pop() < stack.pop();
+						doBranch = stack->pop() < stack->pop();
 						break;
 					case CEE_BGE_UN_S:
-						doBranch = (uint32_t)stack.pop() >= (uint32_t)stack.pop();
+						doBranch = (uint32_t)stack->pop() >= (uint32_t)stack->pop();
 						break;
 					case CEE_BGT_UN_S:
-						doBranch = (uint32_t)stack.pop() > (uint32_t)stack.pop();
+						doBranch = (uint32_t)stack->pop() > (uint32_t)stack->pop();
 						break;
 					case CEE_BLE_UN_S:
-						doBranch = (uint32_t)stack.pop() <= (uint32_t)stack.pop();
+						doBranch = (uint32_t)stack->pop() <= (uint32_t)stack->pop();
 						break;
 					case CEE_BLT_UN_S:
-						doBranch = (uint32_t)stack.pop() < (uint32_t)stack.pop();
+						doBranch = (uint32_t)stack->pop() < (uint32_t)stack->pop();
 						break;
 					case CEE_BNE_UN_S:
-						doBranch = (uint32_t)stack.pop() != (uint32_t)stack.pop();
+						doBranch = (uint32_t)stack->pop() != (uint32_t)stack->pop();
 						break;
 					case CEE_BRFALSE_S:
-						doBranch = stack.pop() == 0;
+						doBranch = stack->pop() == 0;
 						break;
 					case CEE_BRTRUE_S:
-						doBranch = stack.pop() == 0;
+						doBranch = stack->pop() == 0;
 						break;
 					default:
 						InvalidOpCode(LastPC);
@@ -920,6 +959,12 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 			
 			case InlineMethod:
             {
+				if (instr != CEE_CALLVIRT) // TODO: Also support CALL, should be the same for most of what we do
+				{
+					InvalidOpCode(PC);
+					return false;
+				}
+				
 				uint32_t tk = ((uint32_t)pCode[PC]) | ((uint32_t)pCode[PC+1] << 8) | ((uint32_t)pCode[PC+2] << 16) | ((uint32_t)pCode[PC+3] << 24);
                 PC += 4;
 
@@ -935,14 +980,23 @@ bool FirmataIlExecutor::ExecuteIlCode(ExecutionState *state, int codeLength, byt
 				{
 					stackSize = 0;
 				}
-				ExecutionState* newState = new ExecutionState(stackSize);
+				
+				int argumentCount = _methods[method].numArgs;
+				ExecutionState* newState = new ExecutionState(method, stackSize, argumentCount);
 				currentFrame->_next = newState;
 				
+				ObjectStack* oldStack = stack;
 				// Start of the called method
-				PC = 0;
-				locals = currentFrame->_locals;
-				stack = currentFrame->_executionStack;
-                break;
+				currentFrame = newState;
+				currentFrame->ActivateState(&PC, &stack, &locals, &arguments);
+				
+				// Provide arguments to the new method
+				while (argumentCount > 0)
+				{
+					arguments[--argumentCount] = oldStack->pop();
+				}
+				Firmata.sendStringf(F("Pushed stack to method %d"), 2, method);
+				break;
             }
 			default:
 				InvalidOpCode(LastPC);
@@ -963,6 +1017,8 @@ int FirmataIlExecutor::ResolveToken(uint32_t token)
 	{
 		if (_methods[i].methodToken == token)
 		{
+			Firmata.sendString(F("Resolved method token for method: "), i);
+			Firmata.sendString(F("Method flags: "), _methods[i].methodFlags);
 			return i;
 		}
 	}

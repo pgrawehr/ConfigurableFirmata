@@ -16,6 +16,7 @@
 #include <ConfigurableFirmata.h>
 #include <FirmataFeature.h>
 #include <ObjectStack.h>
+#include <ObjectList.h>
 
 #define IL_EXECUTE_NOW 0
 #define IL_LOAD 1
@@ -27,12 +28,15 @@
 #define METHOD_STATIC 1
 #define METHOD_VIRTUAL 2
 #define METHOD_SPECIAL 4
+#define METHOD_VOID 8
 
 struct IlCode
 {
 	byte methodFlags;
 	byte methodLength;
-	byte maxLocals; // the maximum of (number of local variables, execution stack size)
+	// the maximum of (number of local variables, execution stack size)
+	// For special methods (see methodFlags field), this contains the method number
+	byte maxLocals; 
 	byte numArgs;
 	byte* methodIl;
 	uint32_t methodToken;
@@ -40,27 +44,47 @@ struct IlCode
 
 class ExecutionState
 {
-	public:
+	private:
 	short _pc;
 	ObjectStack _executionStack;
-	uint32_t* _locals;
-	uint32_t* _args;
+	ObjectList _locals;
+	ObjectList _arguments;
+	int _codeReference;
 	
+	public:
 	// Next inner execution frame (the innermost frame is being executed) 
 	ExecutionState* _next;
-	ExecutionState(int maxLocals, int argCount) : _executionStack(maxLocals), _pc(0)
+	ExecutionState(int codeReference, int maxLocals, int argCount) : _executionStack(maxLocals), _pc(0), 
+	_locals(maxLocals), _arguments(argCount)
 	{
+		_codeReference = codeReference;
 		_next = NULL;
-		_locals = NULL;
-		if (maxLocals > 0)
-		{
-			_locals = (uint32_t*)malloc(maxLocals * sizeof(uint32_t));
-			memset(_locals, 0, maxLocals * sizeof(uint32_t));
-		}
 	}
 	~ExecutionState()
 	{
-		free(_locals);
+	}
+	
+	void ActivateState(short* pc, ObjectStack** stack, ObjectList** locals, ObjectList** arguments)
+	{
+		*pc = _pc;
+		*stack = &_executionStack;
+		*locals = &_locals;
+		*arguments = &_arguments;
+	}
+	
+	void UpdateArg(int argNo, uint32_t value)
+	{
+		_arguments.Set(argNo, value);
+	}
+	
+	void UpdatePc(short pc)
+	{
+		_pc = pc;
+	}
+	
+	int MethodIndex()
+	{
+		return _codeReference;
 	}
 };
 
@@ -76,9 +100,9 @@ class FirmataIlExecutor: public FirmataFeature
  
   private:
     void LoadIlDataStream(byte codeReference, byte codeLength, byte offset, byte argc, byte* argv);
-	void LoadIlDeclaration(byte codeReference, byte flags, byte maxLocals, byte argc, byte* argv);
+	void LoadIlDeclaration(byte codeReference, int flags, byte maxLocals, byte argc, byte* argv);
 	void DecodeParametersAndExecute(byte codeReference, byte argc, byte* argv);
-	bool ExecuteIlCode(ExecutionState *state, int codeLength, byte* pCode, int argc, uint32_t* argList, uint32_t* returnValue);
+	bool ExecuteIlCode(ExecutionState *state, int codeLength, byte* pCode, uint32_t* returnValue);
 	int ResolveToken(uint32_t token);
 	uint32_t DecodeUint32(byte* argv);
 	IlCode _methods[MAX_METHODS];

@@ -15,6 +15,7 @@
 #define OneWireFirmata_h
 
 #include <ConfigurableFirmata.h>
+
 #include "FirmataFeature.h"
 
 #define ONEWIRE_CRC 0 //for OneWire.h: crc-functions are not used by Firmata
@@ -36,7 +37,6 @@
 #define ONEWIRE_WRITE_REQUEST_BIT 0x20
 
 #define ONEWIRE_WITHDATA_REQUEST_BITS 0x3C
-
 
 //default value for power:
 #define ONEWIRE_POWER 1
