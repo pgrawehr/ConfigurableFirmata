@@ -47,6 +47,11 @@ class ObjectList
 	{
 		_data[index] = object;
 	}
+	
+	uint32_t* AddressOf(int index)
+	{
+		return _data + index;
+	}
 };
 
 #endif
