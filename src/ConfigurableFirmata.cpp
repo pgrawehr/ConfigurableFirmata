@@ -64,8 +64,9 @@ void FirmataClass::endSysex(void)
  */
 FirmataClass::FirmataClass()
 {
-  firmwareVersionCount = 0;
-  firmwareVersionVector = 0;
+  firmwareVersionMinor = 0;
+  firmwareVersionMajor = 0;
+  firmwareVersionName = nullptr;
   blinkVersionDisabled = false;
   systemReset();
 }
@@ -161,14 +162,16 @@ void FirmataClass::disableBlinkVersion()
 void FirmataClass::printFirmwareVersion(void)
 {
   byte i;
-
-  if (firmwareVersionCount) { // make sure that the name has been set before reporting
+  int len;
+  if (firmwareVersionMajor != 0) { // make sure that the name has been set before reporting
     startSysex();
     FirmataStream->write(REPORT_FIRMWARE);
-    FirmataStream->write(firmwareVersionVector[0]); // major version number
-    FirmataStream->write(firmwareVersionVector[1]); // minor version number
-    for (i = 2; i < firmwareVersionCount; ++i) {
-      sendValueAsTwo7bitBytes(firmwareVersionVector[i]);
+    FirmataStream->write(firmwareVersionMajor); // major version number
+    FirmataStream->write(firmwareVersionMinor); // minor version number
+	len = strlen(firmwareVersionName);
+    for (i = 0; i <= len; ++i) // Including terminating 0
+	{ 
+      sendValueAsTwo7bitBytes(firmwareVersionName[i]);
     }
     endSysex();
   }
@@ -183,38 +186,9 @@ void FirmataClass::printFirmwareVersion(void)
  */
 void FirmataClass::setFirmwareNameAndVersion(const char *name, byte major, byte minor)
 {
-  const char *firmwareName;
-  const char *extension;
-
-  // parse out ".cpp" and "applet/" that comes from using __FILE__
-  extension = strstr(name, ".cpp");
-  firmwareName = strrchr(name, '/');
-
-  if (!firmwareName) {
-    // windows
-    firmwareName = strrchr(name, '\\');
-  }
-  if (!firmwareName) {
-    // user passed firmware name
-    firmwareName = name;
-  } else {
-    firmwareName ++;
-  }
-
-  if (!extension) {
-    firmwareVersionCount = strlen(firmwareName) + 2;
-  } else {
-    firmwareVersionCount = extension - firmwareName + 2;
-  }
-
-  // in case anyone calls setFirmwareNameAndVersion more than once
-  free(firmwareVersionVector);
-
-  firmwareVersionVector = (byte *) malloc(firmwareVersionCount + 1);
-  firmwareVersionVector[firmwareVersionCount] = 0;
-  firmwareVersionVector[0] = major;
-  firmwareVersionVector[1] = minor;
-  strncpy((char *)firmwareVersionVector + 2, firmwareName, firmwareVersionCount - 2);
+  firmwareVersionName = (char*)name;
+  firmwareVersionMajor = major;
+  firmwareVersionMinor = minor;
 }
 
 //------------------------------------------------------------------------------
