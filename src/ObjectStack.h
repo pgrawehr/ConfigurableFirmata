@@ -27,19 +27,19 @@ class ObjectStack
 		_data = NULL;
 	}
 	
-	void push(uint32_t object)
+	inline void push(uint32_t object)
 	{
 		_data[_stackPtr] = object;
 		_stackPtr--;
 	}
 	
-	uint32_t pop()
+	inline uint32_t pop()
 	{
 		_stackPtr ++;
 		return _data[_stackPtr];
 	}
 	
-	uint32_t peek()
+	inline uint32_t peek()
 	{
 		return _data[_stackPtr + 1];
 	}
