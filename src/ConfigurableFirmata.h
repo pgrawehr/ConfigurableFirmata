@@ -121,9 +121,16 @@
 #define PIN_MODE_ENCODER        0x09 // pin configured for rotary encoders
 #define PIN_MODE_SERIAL         0x0A // pin configured for serial communication
 #define PIN_MODE_PULLUP         0x0B // enable internal pull-up resistor for pin
+// Proposed extensions
 #define PIN_MODE_SPI            0x0C // pin configured for SPI
+
+// Unofficial extensions
+#define PIN_MODE_SONAR =        0x0D // pin configured for HC-SR04
+#define PIN_MODE_TONE =         0x0E // pin configured for tone
+#define PIN_MODE_DHT            0x0F // pin configured for DHT
+
 #define PIN_MODE_IGNORE         0x7F // pin configured to be ignored by digitalWrite and capabilityResponse
-#define TOTAL_PIN_MODES         13
+#define TOTAL_PIN_MODES         16
 // DEPRECATED as of Firmata v2.5
 #define ANALOG                  0x02 // same as PIN_MODE_ANALOG
 #define PWM                     0x03 // same as PIN_MODE_PWM
