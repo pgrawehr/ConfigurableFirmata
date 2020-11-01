@@ -15,17 +15,12 @@
 
 #include <ConfigurableFirmata.h>
 
-#define DHT_SENSOR_DATA_REQUEST (0x02) // User defined data
+#define DHT_SENSOR_DATA_REQUEST (0x74) // User defined data
+#define DHT_SENSOR_DATA_RESPONSE 0
 #include "FirmataFeature.h"
 #include "FirmataReporting.h"
 
 #include <DHT.h>
- union dhtData
- {
-    short shorts[2];
-    byte bytes[4];
- };
-
 
 class DhtFirmata: public FirmataFeature
 {
@@ -40,16 +35,16 @@ class DhtFirmata: public FirmataFeature
   private:
     void performDhtTransfer(byte command, byte argc, byte *argv);
     void disableDht();
-    bool isDhtEnabled;
-    int dhtPin; // Only one sensor supported
-    DHT* dht;
+    bool _isDhtEnabled;
+    int _dhtPin; // Only one sensor supported
+    DHT* _dht;
 };
 
 
 DhtFirmata::DhtFirmata()
 {
-  isDhtEnabled = false;
-  dhtPin = -1;
+  _isDhtEnabled = false;
+  _dhtPin = -1;
 }
 
 boolean DhtFirmata::handlePinMode(byte pin, int mode)
@@ -58,7 +53,7 @@ boolean DhtFirmata::handlePinMode(byte pin, int mode)
     if (mode == PIN_MODE_DHT) {
       return true;
     }
-	else if (isDhtEnabled) 
+	else if (_isDhtEnabled) 
 	{
 		disableDht();
 	}
@@ -93,47 +88,61 @@ void DhtFirmata::performDhtTransfer(byte command, byte argc, byte *argv)
 {
 	// command byte: DHT Type
 	byte dhtType = command;
-	// first byte: pin
-	byte pin = argv[0];
-	if (!isDhtEnabled)
+	// The proposed protocol specification https://github.com/firmata/protocol/pull/106/commits/9389c89d3d7998dc2bd703f8c796e6a7c03f2551
+	// allows these values, too.
+	if (dhtType == 0x01)
 	{
-		dhtPin = pin;
-		isDhtEnabled = true;
-		dht = new DHT(pin, dhtType);
-		dht->begin();
+		dhtType = 11;
 	}
-	else if (dhtPin != pin)
+	else if (dhtType == 0x02)
 	{
-		Firmata.sendString(F("DHT error: Different pin specified after init"));
-		return;
+		dhtType = 22;
 	}
 	
-	dhtData dataUnion;
+	// first byte: pin
+	byte pin = argv[0];
+	if (!_isDhtEnabled)
+	{
+		_dhtPin = pin;
+		_isDhtEnabled = true;
+		_dht = new DHT(pin, dhtType);
+		_dht->begin();
+	}
+	else if (_dhtPin != pin)
+	{
+		// Switching the pin unfortunately requires re-loading the DHT class
+		delete _dht;
+		_dht = nullptr;
+		_dht = new DHT(pin, dhtType);
+		_dht->begin();
+	}
+	
 	// Accuracy of the sensor is very limited, only 8 bit humidity and maybe 10 bit for temperature
-	dataUnion.shorts[0] = (short)dht->readHumidity();
-	dataUnion.shorts[1] = (short)(dht->readTemperature() * 10);
+	short humidity = (short)_dht->readHumidity() * 10;
+	short temperature = (short)(_dht->readTemperature() * 10);
 	
 	Firmata.startSysex();
 	Firmata.write(DHT_SENSOR_DATA_REQUEST);
-	Firmata.write(dhtType);
+	Firmata.write(DHT_SENSOR_DATA_RESPONSE);
 	Firmata.write(pin);
-	for (int i = 0; i < sizeof(dhtData); i++)
-	{
-		Firmata.sendValueAsTwo7bitBytes(dataUnion.bytes[i]);
-	}
+	Firmata.write(temperature & 0x7f);
+	Firmata.write((temperature >> 7) & 0x7f);
+	
+	Firmata.write(humidity & 0x7f);
+	Firmata.write((humidity >> 7) & 0x7f);
 	Firmata.endSysex();
 }
 
 void DhtFirmata::disableDht()
 {
-	delete dht;
-	dht = NULL;
-	isDhtEnabled = false;
+	delete _dht;
+	_dht = NULL;
+	_isDhtEnabled = false;
 }
 
 void DhtFirmata::reset()
 {
-  if (isDhtEnabled) {
+  if (_isDhtEnabled) {
 	disableDht();
   }
 }
