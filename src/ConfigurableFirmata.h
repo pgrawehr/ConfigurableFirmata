@@ -131,16 +131,6 @@
 
 #define PIN_MODE_IGNORE         0x7F // pin configured to be ignored by digitalWrite and capabilityResponse
 #define TOTAL_PIN_MODES         16
-// DEPRECATED as of Firmata v2.5
-#define ANALOG                  0x02 // same as PIN_MODE_ANALOG
-#define PWM                     0x03 // same as PIN_MODE_PWM
-#define SERVO                   0x04 // same as PIN_MODE_SERVO
-#define SHIFT                   0x05 // same as PIN_MODE_SHIFT
-#define I2C                     0x06 // same as PIN_MODE_I2C
-#define ONEWIRE                 0x07 // same as PIN_MODE_ONEWIRE
-#define STEPPER                 0x08 // same as PIN_MODE_STEPPER
-#define ENCODER                 0x09 // same as PIN_MODE_ENCODER
-#define IGNORE                  0x7F // same as PIN_MODE_IGNORE
 
 extern "C" {
   // callback function types

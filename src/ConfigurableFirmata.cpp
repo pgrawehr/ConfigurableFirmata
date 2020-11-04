@@ -474,8 +474,8 @@ void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeO
 	sendValueAsTwo7bitBytes(0);
 	for (int i = 0; i < sizeOfArgs; i++)
 	{
-		int nextByte = ((byte*)va)[i];
-		sendValueAsTwo7bitBytes((byte)nextByte);
+		byte nextByte = va_arg(va, byte);
+		sendValueAsTwo7bitBytes(nextByte);
 	}
 	endSysex();
     va_end (va);
