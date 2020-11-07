@@ -169,7 +169,7 @@ void FirmataClass::printFirmwareVersion(void)
     FirmataStream->write(firmwareVersionMajor); // major version number
     FirmataStream->write(firmwareVersionMinor); // minor version number
 	len = strlen(firmwareVersionName);
-    for (i = 0; i <= len; ++i) // Including terminating 0
+    for (i = 0; i < len; ++i)
 	{ 
       sendValueAsTwo7bitBytes(firmwareVersionName[i]);
     }
@@ -266,8 +266,9 @@ void FirmataClass::parse(byte inputData)
   // TODO make sure it handles -1 properly
 
   if (parsingSysex) {
-    if (inputData == END_SYSEX) {
-      //stop sysex byte
+	if (inputData == END_SYSEX) 
+	{
+		//stop sysex byte
       parsingSysex = false;
       //fire off handler function
       processSysexMessage();
@@ -275,6 +276,12 @@ void FirmataClass::parse(byte inputData)
       //normal data byte - add to buffer
       storedInputData[sysexBytesRead] = inputData;
       sysexBytesRead++;
+	  if (sysexBytesRead == MAX_DATA_BYTES)
+	  {
+		  Firmata.sendString(F("Discarding input message - exceeds buffer length"));
+		  parsingSysex = false;
+		  sysexBytesRead = 0;
+	  }
     }
   } else if ( (waitForData > 0) && (inputData < 128) ) {
     waitForData--;
@@ -457,10 +464,14 @@ void FirmataClass::sendString(byte command, const char *string)
 
 /**
  * Send a string to the Firmata host application.
+ * On smaller boards (Uno, Nano) we send the format information. On larger boards (Due), we 
+ * format first and send the result. This is more compatible, but requires more memory.
  * @param string A pointer to the char string
  */
 void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeOfArgs, ...) 
 {
+	// 16 bit board?
+#if UINT_MAX == UINT16_MAX
 	int len = strlen_P((const char*)flashString);
 	va_list va;
     va_start (va, sizeOfArgs);
@@ -474,11 +485,37 @@ void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeO
 	sendValueAsTwo7bitBytes(0);
 	for (int i = 0; i < sizeOfArgs; i++)
 	{
-		byte nextByte = va_arg(va, byte);
+		int nextByte = ((byte*)va)[i];
 		sendValueAsTwo7bitBytes(nextByte);
 	}
 	endSysex();
     va_end (va);
+#else 
+	// 32 bit boards. Note that sizeOfArgs may not be correct here (since all arguments are 32-bit padded)
+	int len = strlen_P((const char*)flashString);
+	va_list va;
+    va_start (va, sizeOfArgs);
+	char bytesInput[255];
+	char bytesOutput[255];
+	startSysex();
+	FirmataStream->write(STRING_DATA);
+	for (int i = 0; i < len; i++) 
+	{
+		bytesInput[i] = (pgm_read_byte(((const char*)flashString) + i));
+    }
+	bytesInput[len] = 0;
+	memset(bytesOutput, 0, sizeof(char) * 255);
+	
+	vsprintf(bytesOutput, bytesInput, va);
+	len = strlen(bytesOutput);
+	for (int i = 0; i < len; i++) 
+	{
+		sendValueAsTwo7bitBytes(bytesOutput[i]);
+    }
+	
+	endSysex();
+    va_end (va);
+#endif
 }
 
 /**
