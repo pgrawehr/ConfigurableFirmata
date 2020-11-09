@@ -52,6 +52,7 @@ void FirmataClass::startSysex(void)
 void FirmataClass::endSysex(void)
 {
   FirmataStream->write(END_SYSEX);
+  FirmataStream->flush();
 }
 
 //******************************************************************************
@@ -468,7 +469,7 @@ void FirmataClass::sendString(byte command, const char *string)
  * format first and send the result. This is more compatible, but requires more memory.
  * @param string A pointer to the char string
  */
-void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeOfArgs, ...) 
+void FirmataClass::sendStringf(const FlashString* flashString, int sizeOfArgs, ...) 
 {
 	// 16 bit board?
 #if UINT_MAX == UINT16_MAX
@@ -486,7 +487,7 @@ void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeO
 	for (int i = 0; i < sizeOfArgs; i++)
 	{
 		int nextByte = ((byte*)va)[i];
-		sendValueAsTwo7bitBytes(nextByte);
+		sendValueAsTwo7bitBytes((byte)nextByte);
 	}
 	endSysex();
     va_end (va);
@@ -522,7 +523,7 @@ void FirmataClass::sendStringf(const __FlashStringHelper* flashString, int sizeO
  * Send a constant string to the Firmata host application.
  * @param string A pointer to the string in flash memory
  */
-void FirmataClass::sendString(const __FlashStringHelper* flashString)
+void FirmataClass::sendString(const FlashString* flashString)
 {
   int len = strlen_P((const char*)flashString);
   startSysex();
@@ -538,7 +539,7 @@ void FirmataClass::sendString(const __FlashStringHelper* flashString)
  * @param string A pointer to the string in flash memory
  * @param errorData A number that is sent out with the string (i.e. error code, unrecognized command number)
  */
-void FirmataClass::sendString(const __FlashStringHelper* flashString, uint32_t errorData)
+void FirmataClass::sendString(const FlashString* flashString, uint32_t errorData)
 {
   int len = strlen_P((const char*)flashString);
   startSysex();
@@ -547,7 +548,7 @@ void FirmataClass::sendString(const __FlashStringHelper* flashString, uint32_t e
     sendValueAsTwo7bitBytes(pgm_read_byte(((const char*)flashString) + i));
   }
   String error = String(errorData, HEX);
-  for (int i = 0; i < error.length(); i++) {
+  for (unsigned int i = 0; i < error.length(); i++) {
     sendValueAsTwo7bitBytes((byte)error.charAt(i));
   }
   
