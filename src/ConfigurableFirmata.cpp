@@ -468,11 +468,12 @@ void FirmataClass::sendString(byte command, const char *string)
  * On smaller boards (Uno, Nano) we send the format information. On larger boards (Due), we 
  * format first and send the result. This is more compatible, but requires more memory.
  * @param string A pointer to the char string
+ * @param sizeOfArgs, Total size of arguments (in bytes) on the Arduino uno, where sizeof(int) == 2
  */
 void FirmataClass::sendStringf(const FlashString* flashString, int sizeOfArgs, ...) 
 {
-	// 16 bit board?
-#if UINT_MAX == UINT16_MAX
+	// 16 bit board with only a small flash memory?
+#ifdef ARDUINO_ARCH_AVR
 	int len = strlen_P((const char*)flashString);
 	va_list va;
     va_start (va, sizeOfArgs);
@@ -496,18 +497,24 @@ void FirmataClass::sendStringf(const FlashString* flashString, int sizeOfArgs, .
 	int len = strlen_P((const char*)flashString);
 	va_list va;
     va_start (va, sizeOfArgs);
-	char bytesInput[255];
-	char bytesOutput[255];
+	const int maxSize = 101;
+	char bytesInput[maxSize];
+	char bytesOutput[maxSize];
 	startSysex();
 	FirmataStream->write(STRING_DATA);
+	if (len >= maxSize - 1)
+	{
+		len = 100;
+	}
 	for (int i = 0; i < len; i++) 
 	{
 		bytesInput[i] = (pgm_read_byte(((const char*)flashString) + i));
     }
 	bytesInput[len] = 0;
-	memset(bytesOutput, 0, sizeof(char) * 255);
+	memset(bytesOutput, 0, sizeof(char) * maxSize);
 	
-	vsprintf(bytesOutput, bytesInput, va);
+	vsnprintf(bytesOutput, maxSize, bytesInput, va);
+	bytesOutput[maxSize - 1] = 0;
 	len = strlen(bytesOutput);
 	for (int i = 0; i < len; i++) 
 	{
