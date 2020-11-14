@@ -172,7 +172,6 @@ class FirmataClass
     void sendString(const FlashString* flashString);
 	void sendString(const FlashString* flashString, uint32_t errorData);
 	void sendStringf(const FlashString* fmt, int sizeOfArgs, ...);
-    void sendString(const char *string, ...);
     void sendString(byte command, const char *string);
     void sendSysex(byte command, byte bytec, byte *bytev);
     void write(byte c);
