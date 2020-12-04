@@ -119,3 +119,10 @@ void FirmataExt::reset()
     features[i]->reset();
   }
 }
+
+void FirmataExt::report(bool elapsed)
+{
+  for (byte i = 0; i < numFeatures; i++) {
+    features[i]->report(elapsed);
+  }
+}
