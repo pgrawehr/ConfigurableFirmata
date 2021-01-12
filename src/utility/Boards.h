@@ -689,6 +689,33 @@ typedef uint16_t u16;
 #define PIN_TO_SERVO(p)         (p)
 #define DEFAULT_PWM_RESOLUTION  PWM_RESOLUTION
 
+// ESP32 (Untested)
+#elif defined(ESP32)
+#define TOTAL_ANALOG_PINS       NUM_ANALOG_INPUTS
+#define TOTAL_PINS              NUM_DIGITAL_PINS
+#define VERSION_BLINK_PIN       2
+#define digitalPinHasSPI(p)     ((p) == 12 || (p) == 13 || (p) == 14 || (p) == 15)
+#define PIN_SPI_MOSI            13
+#define PIN_SPI_MISO            12
+#define PIN_SPI_SCK             14
+#define digitalPinHasSerial(p)  ((p) == 16 || (p) == 17 || (p) == 1 || (p) == 3)
+// PIN_SERIALY_RX/TX defined in the variant.h
+#define IS_PIN_DIGITAL(p)       (digitalPinIsValid(p))
+#define IS_PIN_ANALOG(p)        ((p >= A0) && (p < (A0 + TOTAL_ANALOG_PINS)))
+#define IS_PIN_PWM(p)           (IS_PIN_DIGITAL(p) && digitalPinHasPWM(p))
+#define IS_PIN_SERVO(p)         IS_PIN_DIGITAL(p)
+#define IS_PIN_I2C(p)           (IS_PIN_DIGITAL(p) && (p == 21) || (p == 22) )
+#define IS_PIN_SPI(p)           (IS_PIN_DIGITAL(p) && digitalPinHasSPI(p))
+#define IS_PIN_SERIAL(p)        (digitalPinHasSerial(p))
+#define PIN_TO_DIGITAL(p)       (p)
+#define PIN_TO_ANALOG(p)        (p-A0)
+#define PIN_TO_PWM(p)           (p)
+#define PIN_TO_SERVO(p)         (p)
+#define DEFAULT_PWM_RESOLUTION  8
+typedef int16_t u16;
+typedef int32_t u32;
+// Defined in AnalogOutputFirmata.cpp
+void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255);
 
 // Adafruit Bluefruit nRF52 boards
 #elif defined(ARDUINO_NRF52_ADAFRUIT)
