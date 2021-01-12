@@ -169,7 +169,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define PIN_TO_PWM(p)           PIN_TO_DIGITAL(p)
 #define PIN_TO_SERVO(p)         ((p) - 2)
 #define ARDUINO_PINOUT_OPTIMIZE 1
-
+#include <alloca.h>
 
 // Wiring (and board)
 #elif defined(WIRING)
