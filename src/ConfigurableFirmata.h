@@ -16,6 +16,7 @@
 #define Configurable_Firmata_h
 
 #include "utility/Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
+#include "FreeMemory.h"
 
 /* Version numbers for the protocol.  The protocol is still changing, so these
  * version numbers are important.
