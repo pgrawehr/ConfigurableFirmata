@@ -131,16 +131,6 @@
 
 #define PIN_MODE_IGNORE         0x7F // pin configured to be ignored by digitalWrite and capabilityResponse
 #define TOTAL_PIN_MODES         16
-// DEPRECATED as of Firmata v2.5
-#define ANALOG                  0x02 // same as PIN_MODE_ANALOG
-#define PWM                     0x03 // same as PIN_MODE_PWM
-#define SERVO                   0x04 // same as PIN_MODE_SERVO
-#define SHIFT                   0x05 // same as PIN_MODE_SHIFT
-#define I2C                     0x06 // same as PIN_MODE_I2C
-#define ONEWIRE                 0x07 // same as PIN_MODE_ONEWIRE
-#define STEPPER                 0x08 // same as PIN_MODE_STEPPER
-#define ENCODER                 0x09 // same as PIN_MODE_ENCODER
-#define IGNORE                  0x7F // same as PIN_MODE_IGNORE
 
 extern "C" {
   // callback function types
@@ -151,6 +141,7 @@ extern "C" {
   typedef void (*delayTaskCallbackFunction)(long delay);
 }
 
+typedef const __FlashStringHelper FlashString;
 
 // TODO make it a subclass of a generic Serial/Stream base class
 class FirmataClass
@@ -178,10 +169,9 @@ class FirmataClass
     void sendAnalog(byte pin, int value);
     void sendDigital(byte pin, int value); // TODO implement this
     void sendDigitalPort(byte portNumber, int portData);
-    void sendString(const __FlashStringHelper* flashString);
-	void sendString(const __FlashStringHelper* flashString, uint32_t errorData);
-	void sendStringf(const __FlashStringHelper* fmt, int sizeOfArgs, ...);
-    void sendString(const char *string, ...);
+    void sendString(const FlashString* flashString);
+	void sendString(const FlashString* flashString, uint32_t errorData);
+	void sendStringf(const FlashString* fmt, int sizeOfArgs, ...);
     void sendString(byte command, const char *string);
     void sendSysex(byte command, byte bytec, byte *bytev);
     void write(byte c);

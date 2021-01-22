@@ -92,13 +92,17 @@ boolean FirmataExt::handleSysex(byte command, byte argc, byte* argv)
       Firmata.write(END_SYSEX);
       return true;
     default:
-      for (byte i = 0; i < numFeatures; i++) {
-        if (features[i]->handleSysex(command, argc, argv)) {
-          return true;
+	  
+      for (byte i = 0; i < numFeatures; i++) 
+	  {
+		if (features[i]->handleSysex(command, argc, argv)) 
+		{
+			return true;
         }
       }
       break;
   }
+
   return false;
 }
 
@@ -113,5 +117,12 @@ void FirmataExt::reset()
 {
   for (byte i = 0; i < numFeatures; i++) {
     features[i]->reset();
+  }
+}
+
+void FirmataExt::report(bool elapsed)
+{
+  for (byte i = 0; i < numFeatures; i++) {
+    features[i]->report(elapsed);
   }
 }

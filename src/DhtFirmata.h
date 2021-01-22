@@ -30,7 +30,7 @@ class DhtFirmata: public FirmataFeature
     void handleCapability(byte pin);
     boolean handleSysex(byte command, byte argc, byte* argv);
     void reset();
-    void report();
+    void report(bool elapsed) override;
 
   private:
     void performDhtTransfer(byte command, byte argc, byte *argv);
@@ -147,7 +147,7 @@ void DhtFirmata::reset()
   }
 }
 
-void DhtFirmata::report()
+void DhtFirmata::report(bool elapsed)
 {
 }
 
