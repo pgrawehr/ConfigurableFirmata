@@ -34,6 +34,7 @@
 
 void delayTaskCallback(long delay);
 
+#pragma warning (disable:4200)
 struct firmata_task
 {
   firmata_task *nextTask;
@@ -43,6 +44,7 @@ struct firmata_task
   int pos;
   byte messages[];
 };
+#pragma warning(default:4200)
 
 class FirmataScheduler: public FirmataFeature
 {
