@@ -218,6 +218,10 @@ void FirmataClass::processSysexMessage(void)
     case STRING_DATA:
       if (currentStringCallback) {
         byte bufferLength = (sysexBytesRead - 1) / 2;
+        if (bufferLength <= 0)
+        {
+          break;
+        }
         byte i = 1;
         byte j = 0;
         while (j < bufferLength) {
@@ -266,6 +270,15 @@ void FirmataClass::parse(byte inputData)
 
   // TODO make sure it handles -1 properly
 
+  if (inputData == SYSTEM_RESET)
+  {
+      // A system reset shall always be done, regardless of the state of the parser.
+      parsingSysex = false;
+      sysexBytesRead = 0;
+      waitForData = 0;
+      systemReset();
+      return;
+  }
   if (parsingSysex) {
 	if (inputData == END_SYSEX) 
 	{
@@ -277,12 +290,13 @@ void FirmataClass::parse(byte inputData)
       //normal data byte - add to buffer
       storedInputData[sysexBytesRead] = inputData;
       sysexBytesRead++;
-	  if (sysexBytesRead == MAX_DATA_BYTES)
-	  {
-		  Firmata.sendString(F("Discarding input message - exceeds buffer length"));
-		  parsingSysex = false;
-		  sysexBytesRead = 0;
-	  }
+      if (sysexBytesRead == MAX_DATA_BYTES)
+      {
+        Firmata.sendString(F("Discarding input message - exceeds buffer length"));
+        parsingSysex = false;
+        sysexBytesRead = 0;
+        waitForData = 0;
+      }
     }
   } else if ( (waitForData > 0) && (inputData < 128) ) {
     waitForData--;
