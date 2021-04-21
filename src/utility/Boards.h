@@ -708,6 +708,24 @@ typedef uint16_t u16;
 #define PIN_TO_PWM(p)           (p)
 #define PIN_TO_SERVO(p)         (p)
 
+#elif defined(ARDUINO_RASPBERRY_PI_PICO)
+#define TOTAL_ANALOG_PINS       NUM_ANALOG_INPUTS
+#define TOTAL_PINS              28
+#define VERSION_BLINK_PIN       LED_BUILTIN
+#define IS_PIN_DIGITAL(p)       ((p) >= 2 && (p) < TOTAL_PINS)
+#define IS_PIN_ANALOG(p)        ((p) == A0 || (p) == A1 || (p) == A2)
+#define IS_PIN_PWM(p)           digitalPinHasPWM(p)
+#define IS_PIN_SERVO(p)         IS_PIN_DIGITAL(p)
+#define IS_PIN_I2C(p)           ((p) == 4 || (p) == 5) // It seems the Pico can have SPI and I2C on all its pins. How to choose?
+#define IS_PIN_SPI(p)           ((p) == SS || (p)== MOSI || (p) == MISO || (p == SCK))
+#define PIN_SPI_MISO            MISO
+#define PIN_SPI_MOSI            MOSI
+#define PIN_SPI_SCK             SCK
+#define PIN_TO_DIGITAL(p)       (p)
+#define PIN_TO_ANALOG(p)        ( ((p) == A0) ? 0 : ((p) == A1) ? 1 : ((p) == A2) ? 2 : (127))
+#define PIN_TO_PWM(p)           (p)
+#define PIN_TO_SERVO(p)         (p)
+
 
 // anything else
 #else

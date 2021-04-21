@@ -17,7 +17,10 @@
 //******************************************************************************
 
 #include "ConfigurableFirmata.h"
+#ifdef ARDUINO_RASPBERRY_PI_PICO
+#else
 #include "HardwareSerial.h"
+#endif
 
 extern "C" {
 #include <string.h>
