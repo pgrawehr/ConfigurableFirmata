@@ -290,6 +290,11 @@ boolean SpiFirmata::enableSpiPins()
   Firmata.setPinMode(PIN_SPI_SCK, PIN_MODE_SPI);
   pinMode(PIN_SPI_SCK, OUTPUT);
   
+#ifdef ARDUINO_RASPBERRY_PI_PICO
+  SPI.setSCK(6);
+  SPI.setRX(8);
+  SPI.setTX(7);
+#endif
   isSpiEnabled = true;
   return true;
 }

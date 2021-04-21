@@ -716,11 +716,13 @@ typedef uint16_t u16;
 #define IS_PIN_ANALOG(p)        ((p) == A0 || (p) == A1 || (p) == A2)
 #define IS_PIN_PWM(p)           digitalPinHasPWM(p)
 #define IS_PIN_SERVO(p)         IS_PIN_DIGITAL(p)
-#define IS_PIN_I2C(p)           ((p) == 4 || (p) == 5) // It seems the Pico can have SPI and I2C on all its pins. How to choose?
-#define IS_PIN_SPI(p)           ((p) == SS || (p)== MOSI || (p) == MISO || (p == SCK))
-#define PIN_SPI_MISO            MISO
-#define PIN_SPI_MOSI            MOSI
-#define PIN_SPI_SCK             SCK
+// In I2CFirmata.cpp, I2C0 is hardwired to GPIO 4 and 5 if enabled
+#define IS_PIN_I2C(p)           ((p) == 4 || (p) == 5) 
+// dito for SPI. Hardwired to GPIO 6-9 in SpiFirmata.h
+#define IS_PIN_SPI(p)           ((p) == 9 || (p)== 7 || (p) == 8 || (p == 6))
+#define PIN_SPI_MISO            8
+#define PIN_SPI_MOSI            7
+#define PIN_SPI_SCK             6
 #define PIN_TO_DIGITAL(p)       (p)
 #define PIN_TO_ANALOG(p)        ( ((p) == A0) ? 0 : ((p) == A1) ? 1 : ((p) == A2) ? 2 : (127))
 #define PIN_TO_PWM(p)           (p)

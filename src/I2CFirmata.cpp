@@ -231,7 +231,10 @@ boolean I2CFirmata::enableI2CPins()
   }
 
   isI2CEnabled = true;
-
+#ifdef ARDUINO_RASPBERRY_PI_PICO
+  Wire.setSDA(4);
+  Wire.setSCL(5);
+#endif
   Wire.begin();
   return true;
 }
