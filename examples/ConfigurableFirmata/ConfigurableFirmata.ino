@@ -19,7 +19,11 @@
 #define ENABLE_SERIAL
 
 /* Native reading of DHTXX sensors. Reading a DHT11 directly using GPIO methods from a remote PC will not work, because of the very tight timing requirements of these sensors*/
+
+// DHT requires a support routine which is currently missing (not hard to update, though)
+#ifndef ARDUINO_RASPBERRY_PI_PICO
 #define ENABLE_DHT
+#endif
 #define ENABLE_I2C
 #define ENABLE_SPI
 #define ENABLE_ANALOG
