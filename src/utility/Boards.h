@@ -689,7 +689,7 @@ typedef uint16_t u16;
 #define PIN_TO_SERVO(p)         (p)
 #define DEFAULT_PWM_RESOLUTION  PWM_RESOLUTION
 
-// ESP32 (Untested)
+// ESP32
 #elif defined(ESP32)
 #define TOTAL_ANALOG_PINS       NUM_ANALOG_INPUTS
 #define TOTAL_PINS              NUM_DIGITAL_PINS
@@ -699,8 +699,9 @@ typedef uint16_t u16;
 #define PIN_SPI_MISO            12
 #define PIN_SPI_SCK             14
 #define digitalPinHasSerial(p)  ((p) == 16 || (p) == 17 || (p) == 1 || (p) == 3)
-// PIN_SERIALY_RX/TX defined in the variant.h
-#define IS_PIN_DIGITAL(p)       ((p) < 6 || ((p) >= 12 && (p) < 24) || ((p) >= 25 && (p) < 28) || ((p) >= 32 && (p) <= 39))
+// Pins 1 and 3 are used for the USB Serial communication. If we enable them here, the initial pin reset causes the serial communication
+// to not work after boot. 
+#define IS_PIN_DIGITAL(p)       ((p) == 0 || (p) == 2 || (p) == 4 || ((p) >= 12 && (p) < 24) || ((p) >= 25 && (p) < 28) || ((p) >= 32 && (p) <= 39))
 #define IS_PIN_ANALOG(p)        ((p) == 0 || (p) == 2 || (p) == 4 || ((p) >= 12 && (p) < 16) || ((p >= 25 && (p) < 28) || ((p) >= 32 && (p) < 37) || (p) == 39))
 #define IS_PIN_PWM(p)           (IS_PIN_DIGITAL(p) && digitalPinHasPWM(p))
 #define IS_PIN_SERVO(p)         IS_PIN_DIGITAL(p)

@@ -24,10 +24,17 @@ int freeMemory()
 int freeMemory() 
 {
   char top;
-#if defined(__arm__) || defined(ESP32)
+#if defined(__arm__)
   return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(ESP32)
+  // has sbrk, but calling it seems to cause a crash
+  char* m = (char*)malloc(10);
+  int32_t freeMem = m - &top;
+  free(m);
+  return freeMem;
 #elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
   return &top - __brkval;
+
 #else  // __arm__
   return __brkval ? &top - __brkval : &top - __malloc_heap_start;
 #endif  // __arm__
