@@ -81,7 +81,7 @@ FirmataClass::FirmataClass()
  */
 void FirmataClass::begin(void)
 {
-  begin(57600);
+  begin(115200);
 }
 
 /**

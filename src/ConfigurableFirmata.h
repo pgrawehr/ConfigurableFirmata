@@ -110,8 +110,8 @@
 #define SYSEX_SAMPLING_INTERVAL 0x7A // same as SAMPLING_INTERVAL
 
 // pin modes
-//#define INPUT                 0x00 // defined in Arduino.h
-//#define OUTPUT                0x01 // defined in Arduino.h
+#define PIN_MODE_INPUT          0x00 // INPUT is defined in Arduino.h, but may conflict with other uses
+#define PIN_MODE_OUTPUT         0x01 // OUTPUT is defined in Arduino.h. Careful: OUTPUT is defined as 2 on ESP32!
 #define PIN_MODE_ANALOG         0x02 // analog pin in analogInput mode
 #define PIN_MODE_PWM            0x03 // digital pin in PWM output mode
 #define PIN_MODE_SERVO          0x04 // digital pin in Servo output mode
@@ -163,7 +163,7 @@ class FirmataClass
     /* serial receive handling */
     int available(void);
     void processInput(void);
-    void parse(unsigned char value);
+    void parse(byte inputData);
     boolean isParsingMessage(void);
     boolean isResetting(void);
     /* serial send handling */
@@ -171,8 +171,8 @@ class FirmataClass
     void sendDigital(byte pin, int value); // TODO implement this
     void sendDigitalPort(byte portNumber, int portData);
     void sendString(const FlashString* flashString);
-	void sendString(const FlashString* flashString, uint32_t errorData);
-	void sendStringf(const FlashString* fmt, int sizeOfArgs, ...);
+    void sendString(const FlashString* flashString, uint32_t errorData);
+    void sendStringf(const FlashString* fmt, int sizeOfArgs, ...);
     void sendString(byte command, const char *string);
     void sendSysex(byte command, byte bytec, byte *bytev);
     void write(byte c);
@@ -201,8 +201,8 @@ class FirmataClass
     Stream *FirmataStream;
     /* firmware name and version */
     char *firmwareVersionName;
-	byte firmwareVersionMajor;
-	byte firmwareVersionMinor;
+    byte firmwareVersionMajor;
+    byte firmwareVersionMinor;
     /* input message handling */
     byte waitForData; // this flag says the next serial input will be data
     byte executeMultiByteCommand; // execute this after getting multi-byte data

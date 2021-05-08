@@ -64,8 +64,8 @@ boolean DhtFirmata::handlePinMode(byte pin, int mode)
 void DhtFirmata::handleCapability(byte pin)
 {
   if (IS_PIN_DIGITAL(pin)) {
-    Firmata.write(PIN_MODE_DHT);
-    Firmata.write(64); // 2x 32 Bit data per measurement
+    Firmata.write((byte)PIN_MODE_DHT);
+    Firmata.write((byte)64); // 2x 32 Bit data per measurement
   }
 }
 
