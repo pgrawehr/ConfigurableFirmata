@@ -250,8 +250,6 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define PIN_TO_ANALOG(p)        ((p) - 54)
 #define PIN_TO_PWM(p)           PIN_TO_DIGITAL(p)
 #define PIN_TO_SERVO(p)         ((p) - 2)
-typedef uint32_t u32;
-typedef uint16_t u16;
 
 // Arduino/Genuino MKR1000
 #elif defined(ARDUINO_SAMD_MKR1000)
@@ -715,8 +713,7 @@ typedef uint16_t u16;
 #define PIN_TO_SERVO(p)         (p)
 #define DEFAULT_PWM_RESOLUTION  8
 #define DEFAULT_ADC_RESOLUTION  12
-typedef int16_t u16;
-typedef int32_t u32;
+
 // Defined in AnalogOutputFirmata.cpp
 void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255);
 
