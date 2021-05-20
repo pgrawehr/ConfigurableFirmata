@@ -54,6 +54,8 @@ void DigitalInputFirmata::outputPort(byte portNumber, byte portValue, byte force
   }
 }
 
+#pragma warning (push)
+#pragma warning (disable: 6201)
 /* -----------------------------------------------------------------------------
  * check all the active digital inputs for change of state, then add any events
  * to the Serial output queue using Serial.print() */
@@ -80,6 +82,7 @@ void DigitalInputFirmata::report(bool elapsed)
   if (TOTAL_PORTS > 15 && reportPINs[15]) outputPort(15, readPort(15, portConfigInputs[15]), false);
 }
 
+#pragma warning (pop)
 void DigitalInputFirmata::reportDigital(byte port, int value)
 {
   if (port < TOTAL_PORTS) {

@@ -40,6 +40,7 @@ FirmataExt::FirmataExt()
   FirmataExtInstance = this;
   Firmata.attach(SET_PIN_MODE, handleSetPinModeCallback);
   Firmata.attach((byte)START_SYSEX, handleSysexCallback);
+  memset(features, 0, sizeof(FirmataFeature*) * MAX_FEATURES);
   numFeatures = 0;
 }
 
