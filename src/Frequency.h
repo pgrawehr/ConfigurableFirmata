@@ -14,34 +14,45 @@
   See file LICENSE.txt for further informations on licensing terms.
 */
 
-#ifndef DigitalInputFirmata_h
-#define DigitalInputFirmata_h
+#ifndef Frquency_h
+#define Frequency_h
 
 #include <ConfigurableFirmata.h>
 #include "FirmataFeature.h"
 
-void reportDigitalInputCallback(byte port, int value);
+#define INTERRUPT_MODE_DISABLE 0
+#define INTERRUPT_MODE_LOW 1
+#define INTERRUPT_MODE_HIGH 2
+#define INTERRUPT_MODE_RISING 3
+#define INTERRUPT_MODE_FALLING 4
+#define INTERRUPT_MODE_CHANGE 5
 
-class DigitalInputFirmata: public FirmataFeature
+#define FREQUENCY_SUBCOMMAND_CLEAR 0
+#define FREQUENCY_SUBCOMMAND_QUERY 1
+#define FREQUENCY_SUBCOMMAND_REPORT 2
+
+// This class tries to accurately measure the number of ticks per time on a specific pin.
+// All pins that have interrupt capability can be used, but only one at a time. 
+class Frequency: public FirmataFeature
 {
   public:
-    DigitalInputFirmata();
-    void reportDigital(byte port, int value);
+    Frequency();
     void report(bool elapsed);
     void handleCapability(byte pin);
     boolean handleSysex(byte command, byte argc, byte* argv);
     boolean handlePinMode(byte pin, int mode);
     void reset();
-
   private:
-    /* digital input ports */
-    byte reportPINs[TOTAL_PORTS];       // 1 = report this port, 0 = silence
-    byte previousPINs[TOTAL_PORTS];     // previous 8 bits sent
-
-    /* pins configuration */
-    byte portConfigInputs[TOTAL_PORTS]; // each bit: 1 = pin in INPUT, 0 = anything else
-    void outputPort(byte portNumber, byte portValue, byte forceSend);
-    callbackFunction nextCallback;
+    static void FrequencyIsr(byte port, int value);
+    void FrequencyIsrInternal(byte port, int value);
+    void reportValue(int pin);
+    int _activeBitmasks[TOTAL_PORTS];
+    int _lastValues[TOTAL_PORTS];
+    byte _mode;
+	int32_t _reportDelay;
+	int32_t _lastReport;
+	volatile int32_t _ticks[TOTAL_PINS];
+    callbackFunction _nextCallback;
 };
 
 #endif

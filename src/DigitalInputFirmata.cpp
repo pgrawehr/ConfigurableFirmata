@@ -28,6 +28,7 @@ void reportDigitalInputCallback(byte port, int value)
 
 DigitalInputFirmata::DigitalInputFirmata()
 {
+  nextCallback = nullptr;
   for (int i = 0; i < TOTAL_PORTS; i++)
   {
     portConfigInputs[i] = 0;
@@ -35,7 +36,7 @@ DigitalInputFirmata::DigitalInputFirmata()
     reportPINs[i] = 0;
   }
   DigitalInputFirmataInstance = this;
-  Firmata.attach(REPORT_DIGITAL, reportDigitalInputCallback);
+  nextCallback = Firmata.attach(REPORT_DIGITAL, reportDigitalInputCallback);
 }
 
 boolean DigitalInputFirmata::handleSysex(byte command, byte argc, byte* argv)
@@ -49,6 +50,7 @@ void DigitalInputFirmata::outputPort(byte portNumber, byte portValue, byte force
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if (forceSend || previousPINs[portNumber] != portValue) {
+	  Firmata.sendString(F("Pin change detected"));
     Firmata.sendDigitalPort(portNumber, portValue);
     previousPINs[portNumber] = portValue;
   }
@@ -84,7 +86,14 @@ void DigitalInputFirmata::reportDigital(byte port, int value)
 {
   if (port < TOTAL_PORTS) {
     reportPINs[port] = (byte)value;
-    if (value) outputPort(port, readPort(port, portConfigInputs[port]), true);
+    if (value)
+    {
+        outputPort(port, readPort(port, portConfigInputs[port]), true);
+    }
+  }
+  if (nextCallback != nullptr)
+  {
+      nextCallback(port, value);
   }
   // do not disable analog reporting on these 8 pins, to allow some
   // pins used for digital, others analog.  Instead, allow both types
@@ -105,6 +114,7 @@ boolean DigitalInputFirmata::handlePinMode(byte pin, int mode)
         pinMode(PIN_TO_DIGITAL(pin), INPUT_PULLUP);
         Firmata.setPinState(pin, 1);
       }
+	  Firmata.sendString(F("Setting pin to input"));
       return true;
     } else {
       portConfigInputs[pin / 8] &= ~(1 << (pin & 7));
