@@ -37,11 +37,11 @@
 enum class FilterMode
 {
 	// No filtering
-	NoFiltering = 0;
+	NoFiltering = 0,
 	// Filters out events that are considerably shorter than the average
 	// This may help to reduce noise due to a bouncing sensor
-	KeepOnlyLongest = 1;
-}
+	KeepOnlyLongest = 1
+};
 
 // This class tries to accurately measure the number of ticks per time on a specific pin.
 // All pins that have interrupt capability can be used, but only one at a time. 
