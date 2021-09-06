@@ -30,6 +30,18 @@
 #define FREQUENCY_SUBCOMMAND_CLEAR 0
 #define FREQUENCY_SUBCOMMAND_QUERY 1
 #define FREQUENCY_SUBCOMMAND_REPORT 2
+#define FREQUENCY_SUBCOMMAND_FILTER 3
+
+#define FILTER_TABLE_ENTRIES 16
+
+enum class FilterMode
+{
+	// No filtering
+	NoFiltering = 0;
+	// Filters out events that are considerably shorter than the average
+	// This may help to reduce noise due to a bouncing sensor
+	KeepOnlyLongest = 1;
+}
 
 // This class tries to accurately measure the number of ticks per time on a specific pin.
 // All pins that have interrupt capability can be used, but only one at a time. 
@@ -44,11 +56,17 @@ class Frequency: public FirmataFeature
     void reset();
   private:
     static void FrequencyIsr();
+	void InstanceIsr();
     void reportValue(int pin);
     int _activePin;
 	int32_t _reportDelay;
 	int32_t _lastReport;
-	static volatile int32_t _ticks;
+	FilterMode _filterMode;
+	byte _filterTableIndex;
+	int32_t _lastTickMicros;
+	// This table stores the last N deltas between ticks, so that we can create an average.
+	int32_t _filterTable[FILTER_TABLE_ENTRIES];
+	volatile int32_t _ticks;
 };
 
 #endif

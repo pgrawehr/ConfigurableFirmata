@@ -21,8 +21,6 @@
 
 Frequency *FrequencyFirmataInstance;
 
-volatile int32_t Frequency::_ticks = 0;
-
 Frequency::Frequency()
 {
   FrequencyFirmataInstance = this;
@@ -30,12 +28,42 @@ Frequency::Frequency()
   _reportDelay = 0;
   _ticks = 0;
   _lastReport = millis();
+  _lastTickMicros = 0;
+  _filterMode = FilterMode::NoFiltering;
+  for (int i = 0; i < FILTER_TABLE_ENTRIES; i++)
+  {
+	  _filterTable[i] = 0;
+  }
 }
 
 void Frequency::FrequencyIsr()
 {
+	FrequencyFirmataInstance->InstanceIsr();
+}
+
+void Frequency::InstanceIsr()
+{
 	// The ISR can't be interrupted by the main routine, therefore this is thread safe
 	_ticks++;
+	int32_t thistickMicros = micros();
+	if (_lastTickMicros == 0)
+	{
+		_lastTickMicros = thistickMicros;
+		return;
+	}
+	
+	int32_t delta = thistickMicros - _lastTickMicros;
+	if (delta < 0)
+	{
+		// Probably a long time since the last tick
+		_lastTickMicros = thistickMicros;
+		_filterTableIndex = 0;
+		return;
+	}
+	
+	_filterTable[_filterTableIndex] = delta;
+	_filterTableIndex = (_filterTableIndex + 1) % FILTER_TABLE_ENTRIES;
+	_lastTickMicros = thistickMicros;
 }
 
 boolean Frequency::handleSysex(byte command, byte argc, byte* argv)
@@ -145,6 +173,8 @@ void Frequency::reportValue(int pin)
 	// Clear the interrupt flag, so that we can read out the counter
 	noInterrupts();
 	int32_t ticks = _ticks;
+	int32_t filterTableCopy[FILTER_TABLE_ENTRIES];
+	memcpy(filterTableCopy, _filterTable, sizeof(int32_t) * FILTER_TABLE_ENTRIES);
 	interrupts();
 	Firmata.startSysex();
 	Firmata.write(FREQUENCY_COMMAND);
@@ -152,6 +182,11 @@ void Frequency::reportValue(int pin)
 	Firmata.write(pin);
 	Firmata.sendPackedUInt32(currentTime);
 	Firmata.sendPackedUInt32(ticks);
+	Firmata.write((byte)FILTER_TABLE_ENTRIES);
+	for (int i = 0; i < FILTER_TABLE_ENTRIES; i++)
+	{
+		Firmata.sendPackedUInt32(filterTableCopy[i]);
+	}
 	Firmata.endSysex();
 }
 
