@@ -28,7 +28,6 @@ Frequency::Frequency()
   _reportDelay = 0;
   _ticks = 0;
   _lastReport = millis();
-  _lastTickMicros = 0;
   _filterMode = FilterMode::NoFiltering;
   for (int i = 0; i < FILTER_TABLE_ENTRIES; i++)
   {
@@ -45,25 +44,10 @@ void Frequency::InstanceIsr()
 {
 	// The ISR can't be interrupted by the main routine, therefore this is thread safe
 	_ticks++;
-	int32_t thistickMicros = micros();
-	if (_lastTickMicros == 0)
-	{
-		_lastTickMicros = thistickMicros;
-		return;
-	}
+	int32_t thisTickMicros = micros();
 	
-	int32_t delta = thistickMicros - _lastTickMicros;
-	if (delta < 0)
-	{
-		// Probably a long time since the last tick
-		_lastTickMicros = thistickMicros;
-		_filterTableIndex = 0;
-		return;
-	}
-	
-	_filterTable[_filterTableIndex] = delta;
+	_filterTable[_filterTableIndex] = thisTickMicros;
 	_filterTableIndex = (_filterTableIndex + 1) % FILTER_TABLE_ENTRIES;
-	_lastTickMicros = thistickMicros;
 }
 
 boolean Frequency::handleSysex(byte command, byte argc, byte* argv)
