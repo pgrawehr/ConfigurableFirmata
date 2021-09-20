@@ -28,6 +28,7 @@ Frequency::Frequency()
   _reportDelay = 0;
   _ticks = 0;
   _lastReport = millis();
+  _minValidTime = 0;
   _filterMode = FilterMode::NoFiltering;
   for (int i = 0; i < FILTER_TABLE_ENTRIES; i++)
   {
@@ -43,11 +44,20 @@ void Frequency::FrequencyIsr()
 void Frequency::InstanceIsr()
 {
 	// The ISR can't be interrupted by the main routine, therefore this is thread safe
-	_ticks++;
 	int32_t thisTickMicros = micros();
-	
+	if (_lastTickTime == 0)
+	{
+	  _lastTickTime = thisTickMicros;
+	  _ticks++;
+	  return;
+	}
+	int32_t delta = thisTickMicros - _lastTickTime;
 	_filterTable[_filterTableIndex] = thisTickMicros;
 	_filterTableIndex = (_filterTableIndex + 1) % FILTER_TABLE_ENTRIES;
+	if (delta >= _minValidTime)
+	{
+	  _ticks++;
+        }
 }
 
 boolean Frequency::handleSysex(byte command, byte argc, byte* argv)
@@ -159,7 +169,39 @@ void Frequency::reportValue(int pin)
 	int32_t ticks = _ticks;
 	int32_t filterTableCopy[FILTER_TABLE_ENTRIES];
 	memcpy(filterTableCopy, _filterTable, sizeof(int32_t) * FILTER_TABLE_ENTRIES);
+	int32_t index = _filterTableIndex;
 	interrupts();
+	int32_t average = 0;
+	int numUsed = 0;
+	int i = index;
+	int end = index - 1;
+	if (end < 0)
+	{
+	  end = FILTER_TABLE_ENTRIES - 1;
+	}
+	while (i != end)
+	{
+	  int32_t delta = filterTableCopy[(i + 1) % FILTER_TABLE_ENTRIES] - filterTableCopy[i];
+	  if (delta != 0 && delta < 10000000 && delta > 1000) // Max 10 Seconds, min 1 ms
+	  {
+	    average += delta;
+	    numUsed++;
+	  }
+	  i = (i + 1) % FILTER_TABLE_ENTRIES;
+	}
+	
+	if (numUsed > 0)
+	{
+	  average = average / numUsed;
+	}
+	else
+	{
+	  average = 0;
+	}
+	noInterrupts();
+	_minValidTime = (int32_t)(average * 0.15);
+	interrupts();
+	// Firmata.sendString(F("Minimum clock time is "), _minValidTime);
 	Firmata.startSysex();
 	Firmata.write(FREQUENCY_COMMAND);
 	Firmata.write(FREQUENCY_SUBCOMMAND_REPORT);
@@ -167,7 +209,7 @@ void Frequency::reportValue(int pin)
 	Firmata.sendPackedUInt32(currentTime);
 	Firmata.sendPackedUInt32(ticks);
 	Firmata.write((byte)FILTER_TABLE_ENTRIES);
-	for (int i = 0; i < FILTER_TABLE_ENTRIES; i++)
+	for (i = 0; i < FILTER_TABLE_ENTRIES; i++)
 	{
 		Firmata.sendPackedUInt32(filterTableCopy[i]);
 	}

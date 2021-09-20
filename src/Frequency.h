@@ -64,8 +64,10 @@ class Frequency: public FirmataFeature
 	FilterMode _filterMode;
 	byte _filterTableIndex;
 	// This table stores the last N deltas between ticks, so that we can create an average.
-	int32_t _filterTable[FILTER_TABLE_ENTRIES];
+	volatile int32_t _filterTable[FILTER_TABLE_ENTRIES];
 	volatile int32_t _ticks;
+	volatile int32_t _minValidTime;
+        volatile int32_t _lastTickTime;
 };
 
 #endif
