@@ -201,7 +201,7 @@ void Frequency::reportValue(int pin)
 	noInterrupts();
 	_minValidTime = (int32_t)(average * 0.15);
 	interrupts();
-	// Firmata.sendString(F("Minimum clock time is "), _minValidTime);
+	Firmata.sendStringf(F("Minimum clock time is %d"), 4, _minValidTime);
 	Firmata.startSysex();
 	Firmata.write(FREQUENCY_COMMAND);
 	Firmata.write(FREQUENCY_SUBCOMMAND_REPORT);
