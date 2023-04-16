@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C5F80730-F44F-4478-BDAE-6634EFC2CA88}</ProjectGuid>
+    <Keyword>Linux</Keyword>
+    <RootNamespace>
+    </RootNamespace>
+    <ProjectName>ConfigurableFirmata</ProjectName>
+    <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
+    <ApplicationType>Linux</ApplicationType>
+    <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
+    <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
+    <LinuxProjectType>{D51BCBC9-82E9-4017-911E-C93873C4EA2B}</LinuxProjectType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <LinuxIncludePath>c:\visualmicro\ignore</LinuxIncludePath>
+    <wiringPiIncludePath>c:\visualmicro\pi-ignore</wiringPiIncludePath>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <ImportGroup Label="ExtensionTargets" />
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <IncludePath>$(ProjectDir)..\ConfigurableFirmata;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\cores\arduino;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\variants\eightanaloginputs;$(ProjectDir)..\..\src;$(ProjectDir)..\..\src\utility;$(ProjectDir)..\..\..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\WiFi\src;$(ProjectDir)..\..\..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\WiFi\src\utility;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\libraries\Wire\src;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\libraries\Wire\src\utility;$(ProjectDir)..\..\..\Servo\src;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\lib\gcc\avr\7.3.0\include;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\lib\gcc\avr\7.3.0\include-fixed;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\avr\include</IncludePath>
+    <RemoteCCompileToolExe>$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\bin\avr-g++</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\bin\avr-g++</RemoteCppCompileToolExe>
+    <ValidateArchitecture>false</ValidateArchitecture>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectCapability Include="VisualMicro" />
+    <ProjectCapability Include="VisualMicroLinux" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ConfigurableFirmata.ino" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\AccelStepperFirmata.h" />
+    <ClInclude Include="..\..\src\AnalogInputFirmata.h" />
+    <ClInclude Include="..\..\src\AnalogOutputFirmata.h" />
+    <ClInclude Include="..\..\src\ConfigurableFirmata.h" />
+    <ClInclude Include="..\..\src\DhtFirmata.h" />
+    <ClInclude Include="..\..\src\DigitalInputFirmata.h" />
+    <ClInclude Include="..\..\src\DigitalOutputFirmata.h" />
+    <ClInclude Include="..\..\src\Encoder7Bit.h" />
+    <ClInclude Include="..\..\src\EthernetClientStream.h" />
+    <ClInclude Include="..\..\src\FirmataExt.h" />
+    <ClInclude Include="..\..\src\FirmataFeature.h" />
+    <ClInclude Include="..\..\src\FirmataReporting.h" />
+    <ClInclude Include="..\..\src\FirmataScheduler.h" />
+    <ClInclude Include="..\..\src\Frequency.h" />
+    <ClInclude Include="..\..\src\I2CFirmata.h" />
+    <ClInclude Include="..\..\src\OneWireFirmata.h" />
+    <ClInclude Include="..\..\src\SerialFirmata.h" />
+    <ClInclude Include="..\..\src\ServoFirmata.h" />
+    <ClInclude Include="..\..\src\SpiFirmata.h" />
+    <ClInclude Include="..\..\src\StepperFirmata.h" />
+    <ClInclude Include="__vm\.ConfigurableFirmata.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\AccelStepperFirmata.cpp" />
+    <ClCompile Include="..\..\src\AnalogInputFirmata.cpp" />
+    <ClCompile Include="..\..\src\AnalogOutputFirmata.cpp" />
+    <ClCompile Include="..\..\src\AnalogOutputFirmataEsp32.cpp" />
+    <ClCompile Include="..\..\src\ConfigurableFirmata.cpp" />
+    <ClCompile Include="..\..\src\DhtFirmata.cpp" />
+    <ClCompile Include="..\..\src\DigitalInputFirmata.cpp" />
+    <ClCompile Include="..\..\src\DigitalOutputFirmata.cpp" />
+    <ClCompile Include="..\..\src\Encoder7Bit.cpp" />
+    <ClCompile Include="..\..\src\EthernetClientStream.cpp" />
+    <ClCompile Include="..\..\src\FirmataExt.cpp" />
+    <ClCompile Include="..\..\src\FirmataFeature.cpp" />
+    <ClCompile Include="..\..\src\FirmataReporting.cpp" />
+    <ClCompile Include="..\..\src\FirmataScheduler.cpp" />
+    <ClCompile Include="..\..\src\Frequency.cpp" />
+    <ClCompile Include="..\..\src\I2CFirmata.cpp" />
+    <ClCompile Include="..\..\src\OneWireFirmata.cpp" />
+    <ClCompile Include="..\..\src\SerialFirmata.cpp" />
+    <ClCompile Include="..\..\src\ServoFirmata.cpp" />
+    <ClCompile Include="..\..\src\SpiFirmata.cpp" />
+    <ClCompile Include="..\..\src\StepperFirmata.cpp" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\ConfigurableFirmata;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\cores\arduino;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\variants\eightanaloginputs;$(ProjectDir)..\ConfigurableFirmata\src\utility;$(ProjectDir)..\..\..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\WiFi\src;$(ProjectDir)..\..\..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\WiFi\src\utility;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\libraries\Wire\src;$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\hardware\avr\1.8.6\libraries\Wire\src\utility;$(ProjectDir)..\..\..\Servo\src;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\lib\gcc\avr\7.3.0\include;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\lib\gcc\avr\7.3.0\include-fixed;$(ProjectDir)..\..\..\..\..\..\appdata\local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\avr\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <GccToolChain>$(ProjectDir)..\..\..\..\..\..\AppData\Local\arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7\bin\avr-g++</GccToolChain>
+      <CppLanguageStandard>gnu++11</CppLanguageStandard>
+      <CLanguageStandard>gnu11</CLanguageStandard>
+      <CAdditionalWarning />
+      <CppAdditionalWarning />
+      <ForcedIncludeFiles>$(ProjectDir)..\..\..\..\..\..\..\..\program files\microsoft visual studio\2022\professional\common7\ide\extensions\33x5q2if.r4j\Micro Platforms\default\vm-intelli-pre.h;$(ProjectDir)..\..\..\..\..\..\AppData\Local\Temp\VMBuilds\ConfigurableFirmata\nano_atmega328old\Debug\.vmintelli\672f4f4a9302617f8c8f7e5b71683871\vm-intelli-gcc-defines.h;$(ProjectDir)..\..\..\..\..\..\..\..\program files\microsoft visual studio\2022\professional\common7\ide\extensions\33x5q2if.r4j\Micro Platforms\default\vm-intelli-post.h;$(ProjectDir)__vm\.ConfigurableFirmata.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <UndefineAllPreprocessorDefinitions>true</UndefineAllPreprocessorDefinitions>
+      <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
+      <PreprocessorDefinitions>_VMICRO_INTELLISENSE;__AVR_atmega328p__;__AVR_ATmega328P__;__AVR_ATmega328p__;_VMDEBUG=1;F_CPU=16000000L;ARDUINO=108019;ARDUINO_AVR_NANO;ARDUINO_ARCH_AVR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties arduino.upload.port="COM6" config.Debug.customdebug_nano_atmega328old_debugger_type="universal" />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>
